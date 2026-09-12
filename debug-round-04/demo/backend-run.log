@@ -1,0 +1,31 @@
+INFO:     Started server process [58581]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62306 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62308 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62345 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62348 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62351 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62358 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62359 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62364 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62365 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62369 - "POST /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62378 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62379 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62380 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62381 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62386 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62391 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62392 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62396 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/nodes/8232de5dbd314771b01ae8aec6ed9ad4/preview?rows=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62400 - "POST /api/projects/8d4c6c2a1b1d42538599a0399ced967c/nodes/8232de5dbd314771b01ae8aec6ed9ad4/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62403 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62406 - "POST /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs/28060d4ae8d04701a40c8c5b3312d1d1/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62411 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62412 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62446 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62448 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62450 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK

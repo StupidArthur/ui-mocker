@@ -27,6 +27,12 @@ describe("Session", () => {
     expect(sanitizeForArtifact({ authorization: "Bearer secret", nested: { apiKey: "sk-secret" } })).toEqual({ authorization: "[REDACTED]", nested: { apiKey: "[REDACTED]" } });
   });
 
+  it("keeps LLM token usage numbers while redacting sensitive keys", () => {
+    const sanitized = sanitizeForArtifact({ usage: { totalTokens: 12, promptTokens: 5, completionTokens: 7 }, authorization: "Bearer x" }) as Record<string, unknown>;
+    expect(sanitized.usage).toEqual({ totalTokens: 12, promptTokens: 5, completionTokens: 7 });
+    expect(sanitized.authorization).toBe("[REDACTED]");
+  });
+
   it("connects once, preserves page state across steps, and writes records", async () => {
     const adapter = new SessionFakeAdapter();
     const sink = new MemoryArtifactSink();

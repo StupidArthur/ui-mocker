@@ -1,0 +1,2 @@
+trial,status,actions,modelCalls,tokens,firstSuccessIteration,sameSnapshotObserveCount,rescue,reason
+1,blocked,9,13,[REDACTED],-1,2,,Repeated observation of the same unchanged snapshot (2 times). actions=9 modelCalls=13 tokens=75002
