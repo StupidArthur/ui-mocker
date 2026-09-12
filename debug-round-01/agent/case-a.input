@@ -1,0 +1,2 @@
+打开 Data-Algorithm Studio 登录页 http://localhost:5173/login，使用默认管理员账号 admin/admin123 登录，并确认进入数据集页面（URL 包含 /datasets）。
+/exit

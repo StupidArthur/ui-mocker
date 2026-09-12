@@ -1,0 +1,255 @@
+diff --git a/demo_01/README.md b/demo_01/README.md
+index dee16f7..9e50767 100644
+--- a/demo_01/README.md
++++ b/demo_01/README.md
+@@ -19,6 +19,9 @@ cd frontend
+ npm install
+ npm run dev
+ # 打开 http://localhost:5173
++
++# 3. 测试前重置（清空运行期数据并恢复默认管理员 admin / admin123）
++python reset_demo.py
+ ```
+ 
+ ## 功能
+diff --git a/demo_01/docs/runbook.md b/demo_01/docs/runbook.md
+index 2e0ea96..1f3034f 100644
+--- a/demo_01/docs/runbook.md
++++ b/demo_01/docs/runbook.md
+@@ -61,6 +61,19 @@ cd backend
+ python -m pytest -v
+ ```
+ 
++### 测试环境重置
++
++UI 自动化重复运行会残留数据集、项目、算法运行、血缘节点、账号与公开状态等数据。
++在每次测试前（后端停止时）执行重置，删除运行期数据目录并重建表与默认管理员：
++
++```bash
++cd demo_01
++python reset_demo.py
++```
++
++重置复用 `db.init_db()`，多次执行结果一致；执行后可直接重启后端。数据目录可用
++`STUDIO_DATA_DIR` 覆盖（重置脚本同样遵循该变量）。
++
+ ## 演示主链路
+ 
+ 1. 用 `admin/admin123` 登录，或注册新用户。
+diff --git a/demo_01/reset_demo.py b/demo_01/reset_demo.py
+new file mode 100644
+index 0000000..5d268f4
+--- /dev/null
++++ b/demo_01/reset_demo.py
+@@ -0,0 +1,35 @@
++"""测试环境重置：清空运行期数据并恢复 Demo 初始状态。
++
++用途：UI 自动化测试重复运行时，数据集、项目、算法运行记录、血缘节点、
++用户账号、公开状态等业务数据会残留，导致两次测试结果不可比。
++本脚本删除整个运行期数据目录（SQLite 库与上传/派生文件），再复用
++`db.init_db()` 重建表结构与默认管理员，保证多次执行结果一致（幂等）。
++
++用法：
++    cd demo_01
++    python reset_demo.py
++"""
++
++import shutil
++import sys
++from pathlib import Path
++
++# 复用 backend 既有模块：config / db / security，不重复实现初始化逻辑。
++BACKEND_DIR = Path(__file__).resolve().parent / "backend"
++if str(BACKEND_DIR) not in sys.path:
++    sys.path.insert(0, str(BACKEND_DIR))
++
++from config import DATA_DIR  # noqa: E402
++from db import init_db  # noqa: E402
++
++
++def reset() -> None:
++    """删除运行期数据目录并重新初始化数据库。可重复执行。"""
++    if DATA_DIR.exists():
++        shutil.rmtree(DATA_DIR)
++    init_db()
++
++
++if __name__ == "__main__":
++    reset()
++    print(f"demo reset complete: {DATA_DIR}")
+diff --git a/webui-agent/README.md b/webui-agent/README.md
+index 024c7c7..2e145b7 100644
+--- a/webui-agent/README.md
++++ b/webui-agent/README.md
+@@ -120,9 +120,11 @@ limits:
+ 默认 MCP 启动方式：
+ 
+ ```text
+-npx -y chrome-devtools-mcp@latest --isolated
++npx -y chrome-devtools-mcp@1.7.0 --isolated
+ ```
+ 
++MCP 版本固定在 `src/mcp-adapter.ts` 的 `CHROME_DEVTOOLS_MCP_VERSION`，不使用 `@latest`，避免同一仓库 commit 因 npx 拉到不同版本而行为漂移。当前固定 **1.7.0**：这是 README 记录的端到端验证日期（2026-08-23）时 `@latest` 实际解析到的版本；更新的 1.8.0+ 将 `navigate_page` / `take_snapshot` 的 `pageId` 改为必填，会破坏现有 adapter 的 `setup` 与快照采集。
++
+ 常用环境变量：
+ 
+ | 变量 | 作用 | 默认值 |
+diff --git a/webui-agent/src/cli.ts b/webui-agent/src/cli.ts
+index 9f71c0d..ef403c6 100644
+--- a/webui-agent/src/cli.ts
++++ b/webui-agent/src/cli.ts
+@@ -111,10 +111,14 @@ function normalizeCase(value: unknown): TestCaseDefinition {
+     return Number(match[1]) * scale[match[2].toLowerCase()];
+   };
+   const list = (input: unknown): string[] => Array.isArray(input) ? input.map(String) : input == null ? [] : [String(input)];
++  const requiredOperations = Array.isArray(item.requiredOperations)
++    ? item.requiredOperations.map((operation: any) => ({ id: String(operation?.id ?? ""), description: String(operation?.description ?? "") }))
++    : undefined;
+   return {
+     name: String(item.name ?? ""), description: String(item.description ?? ""), startUrl: item.startUrl ?? item.start_url,
+     completion: { mode: item.completion?.mode ?? "state_reached", success: list(item.completion?.success), failure: list(item.completion?.failure) },
+     timing: { expectedMs: duration(item.timing?.expectedMs ?? item.timing?.expected), timeoutMs: duration(item.timing?.timeoutMs ?? item.timing?.timeout) },
++    requiredOperations,
+     limits: item.limits,
+   };
+ }
+diff --git a/webui-agent/src/mcp-adapter.ts b/webui-agent/src/mcp-adapter.ts
+index f7e0a3f..e526a64 100644
+--- a/webui-agent/src/mcp-adapter.ts
++++ b/webui-agent/src/mcp-adapter.ts
+@@ -111,8 +111,14 @@ export class ChromeDevtoolsMcpAdapter implements BrowserAdapter {
+   private findTool(names: string[]): string | undefined { return names.find((name) => this.tools.some((tool) => tool.name === name)); }
+ }
+ 
++/** 固定的 chrome-devtools-mcp 版本：避免 @latest 在仓库之外漂移，保证同一 commit 行为可复现。
++ *  1.7.0 是 README 记录的端到端验证日期（2026-08-23）时 @latest 实际解析到的版本，
++ *  其 navigate_page / take_snapshot 不要求 pageId，与现有 adapter 兼容；
++ *  更新的 1.8.0+ 将 pageId 改为必填，会破坏 setup 与快照采集。 */
++export const CHROME_DEVTOOLS_MCP_VERSION = "1.7.0";
++
+ export function defaultMcpArgs(headless = false): string[] {
+-  const args = ["-y", "chrome-devtools-mcp@latest", "--isolated"];
++  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated"];
+   if (headless) args.push("--headless");
+   return args;
+ }
+diff --git a/webui-agent/src/minimax-provider.ts b/webui-agent/src/minimax-provider.ts
+index 89bf359..263fb3e 100644
+--- a/webui-agent/src/minimax-provider.ts
++++ b/webui-agent/src/minimax-provider.ts
+@@ -195,8 +195,36 @@ function parseJson<T>(text: string): T {
+     const start = cleaned.indexOf("{");
+     const end = cleaned.lastIndexOf("}");
+     if (start >= 0 && end > start) {
+-      try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* report below */ }
++      try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* try first balanced object below */ }
++    }
++    const first = extractFirstJsonObject(cleaned);
++    if (first) {
++      try { return JSON.parse(first) as T; } catch { /* report below */ }
+     }
+     throw new Error(`MiniMax returned invalid JSON: ${cleaned.slice(0, 300)}`);
+   }
+ }
++
++/** Returns the first complete JSON object in the text, ignoring anything after it.
++ *  Handles models that concatenate multiple objects or append commentary. */
++function extractFirstJsonObject(text: string): string | undefined {
++  const start = text.indexOf("{");
++  if (start < 0) return undefined;
++  let depth = 0, inString = false, escaped = false;
++  for (let i = start; i < text.length; i += 1) {
++    const char = text[i];
++    if (inString) {
++      if (escaped) escaped = false;
++      else if (char === "\\") escaped = true;
++      else if (char === '"') inString = false;
++      continue;
++    }
++    if (char === '"') inString = true;
++    else if (char === "{") depth += 1;
++    else if (char === "}") {
++      depth -= 1;
++      if (depth === 0) return text.slice(start, i + 1);
++    }
++  }
++  return undefined;
++}
+diff --git a/webui-agent/test/adapter.test.ts b/webui-agent/test/adapter.test.ts
+index f933a65..fa5cf83 100644
+--- a/webui-agent/test/adapter.test.ts
++++ b/webui-agent/test/adapter.test.ts
+@@ -19,8 +19,8 @@ class FakeClient implements McpClientLike {
+ 
+ describe("ChromeDevtoolsMcpAdapter", () => {
+   it("keeps visible isolated Chrome by default and adds headless only when requested", () => {
+-    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@latest", "--isolated"]);
+-    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@latest", "--isolated", "--headless"]);
++    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated"]);
++    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--headless"]);
+   });
+ 
+   it("uses a project-local npm cache unless explicitly overridden", () => {
+diff --git a/webui-agent/test/case-loader.test.ts b/webui-agent/test/case-loader.test.ts
+index 8679261..a597e95 100644
+--- a/webui-agent/test/case-loader.test.ts
++++ b/webui-agent/test/case-loader.test.ts
+@@ -1,4 +1,7 @@
+ import { describe, expect, it } from "vitest";
++import { mkdtemp, writeFile } from "node:fs/promises";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
+ import { createAdHocCase, loadCase } from "../src/cli.js";
+ 
+ describe("test case loader", () => {
+@@ -10,6 +13,28 @@ describe("test case loader", () => {
+     expect(item.completion.mode).toBe("state_reached");
+   });
+ 
++  it("keeps requiredOperations declared in a YAML case", async () => {
++    const dir = await mkdtemp(join(tmpdir(), "case-loader-"));
++    const path = join(dir, "case.yaml");
++    await writeFile(path, [
++      "name: 登录",
++      "description: 登录",
++      "completion:",
++      "  mode: operation_succeeded",
++      "  success: [完成]",
++      "  failure: []",
++      "requiredOperations:",
++      "  - id: submit_login",
++      "    description: 点击登录",
++      "timing:",
++      "  expected: 3秒",
++      "  timeout: 15秒",
++      "",
++    ].join("\n"));
++    const item = await loadCase(path);
++    expect(item.requiredOperations).toEqual([{ id: "submit_login", description: "点击登录" }]);
++  });
++
+   it("turns plain console input into a bounded V2 test case", () => {
+     const item = createAdHocCase("填写登录表单并点击登录");
+     expect(item.description).toBe("填写登录表单并点击登录");
+diff --git a/webui-agent/test/minimax-provider.test.ts b/webui-agent/test/minimax-provider.test.ts
+index e429891..3c25177 100644
+--- a/webui-agent/test/minimax-provider.test.ts
++++ b/webui-agent/test/minimax-provider.test.ts
+@@ -44,6 +44,17 @@ describe("MiniMax providers", () => {
+     expect(result.kind).toBe("observe");
+   });
+ 
++  it("uses the first complete JSON object when the model concatenates several", async () => {
++    const provider = new MiniMaxCaseAgentProvider(async () => '{"kind":"operation","reason":"第一步","operation":{"toolName":"fill","arguments":{"uid":"1","value":"admin"}}}\n{"kind":"operation","reason":"第二步","operation":{"toolName":"fill","arguments":{"uid":"2","value":"admin123"}}}');
++    const result = await provider.decide({
++      testCase: { name: "登录", description: "登录", completion: { mode: "operation_succeeded", success: ["完成"], failure: [] }, timing: { expectedMs: 3000, timeoutMs: 15000 } },
++      current: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: {}, toolCalls: [] },
++      capabilities: [{ name: "fill" }], history: [], actionCount: 0, elapsedMs: 0, remainingMs: 15000, completedOperationIds: [], pendingOperations: [{ id: "fill_username", description: "填用户名" }],
++    });
++    expect(result.kind).toBe("operation");
++    expect(result.operation).toEqual({ toolName: "fill", arguments: { uid: "1", value: "admin" } });
++  });
++
+   it("compiles an operation-only instruction with operation_succeeded mode", async () => {
+     const provider = new MiniMaxCaseCompilerProvider(async () => JSON.stringify({
+       name: "点击专家模式", description: "ignored",

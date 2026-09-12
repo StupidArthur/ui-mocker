@@ -195,8 +195,36 @@ function parseJson<T>(text: string): T {
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start >= 0 && end > start) {
-      try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* report below */ }
+      try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* try first balanced object below */ }
+    }
+    const first = extractFirstJsonObject(cleaned);
+    if (first) {
+      try { return JSON.parse(first) as T; } catch { /* report below */ }
     }
     throw new Error(`MiniMax returned invalid JSON: ${cleaned.slice(0, 300)}`);
   }
+}
+
+/** Returns the first complete JSON object in the text, ignoring anything after it.
+ *  Handles models that concatenate multiple objects or append commentary. */
+function extractFirstJsonObject(text: string): string | undefined {
+  const start = text.indexOf("{");
+  if (start < 0) return undefined;
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') inString = true;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return undefined;
 }

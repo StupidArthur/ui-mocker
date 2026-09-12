@@ -120,8 +120,10 @@ limits:
 默认 MCP 启动方式：
 
 ```text
-npx -y chrome-devtools-mcp@latest --isolated
+npx -y chrome-devtools-mcp@1.7.0 --isolated
 ```
+
+MCP 版本固定在 `src/mcp-adapter.ts` 的 `CHROME_DEVTOOLS_MCP_VERSION`，不使用 `@latest`，避免同一仓库 commit 因 npx 拉到不同版本而行为漂移。当前固定 **1.7.0**：这是 README 记录的端到端验证日期（2026-08-23）时 `@latest` 实际解析到的版本；更新的 1.8.0+ 将 `navigate_page` / `take_snapshot` 的 `pageId` 改为必填，会破坏现有 adapter 的 `setup` 与快照采集。
 
 常用环境变量：
 

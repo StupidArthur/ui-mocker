@@ -1,0 +1,8 @@
+{
+  "session_id": "case-a",
+  "artifact": "/Users/arthur/code/ui-mocker/debug-round-01/agent/case-a.jsonl",
+  "console": "/Users/arthur/code/ui-mocker/debug-round-01/agent/case-a.console.log",
+  "commands": ["打开 Data-Algorithm Studio 登录页 http://localhost:5173/login，使用默认管理员账号 admin/admin123 登录，并确认进入数据集页面（URL 包含 /datasets）。"],
+  "case_timeout": 420,
+  "mcp_log": "/Users/arthur/code/ui-mocker/debug-round-01/agent/mcp-stderr.log"
+}

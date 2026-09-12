@@ -1,0 +1,6 @@
+WebUI step agent connected. session=case-b-run1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-01/agent/case-b-run1.jsonl
+Type /help for commands.
+> running case: Data-Algorithm Studio 冒烟业务链路
+[2] failed: Operation cycle exhausted: elapsedMs=598419, remainingMs=1581 — the test case has timed out before descriptive statistics could be run and approved. No completion or fresh page state was returned in the allowed window. actions=4 modelCalls=14
+> 

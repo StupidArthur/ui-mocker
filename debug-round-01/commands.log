@@ -1,0 +1,36 @@
+# debug-round-01 commands
+
+## 静态验证
+cd webui-agent && npm install
+cd webui-agent && npm run typecheck
+cd webui-agent && npm test                 # 30 passed
+cd webui-agent && npm run build
+cd demo_01/backend && python3 -m venv .venv
+cd demo_01/backend && .venv/bin/python -m pip install -r requirements.txt
+cd demo_01/backend && .venv/bin/python -m pytest -v      # 29 passed
+cd demo_01/frontend && npm install
+cd demo_01/frontend && npm run build                     # tsc --noEmit + vite build
+
+## MCP 版本探测
+npm view chrome-devtools-mcp version                     # 1.9.0
+npx tsx mcp-probe.mts                                    # 1.9.0: navigate_page/take_snapshot require pageId -> FAIL
+PROBE_VERSION=1.7.0 npx tsx mcp-schema-version.mts       # 1.7.0: required=null, NAV/SHOT ok
+
+## 环境重置与启动
+cd demo_01 && python3 reset_demo.py                      # 幂等，可连续执行
+cd demo_01/backend && nohup .venv/bin/python -m uvicorn main:app --port 8000 &
+cd demo_01/frontend && nohup npm run dev &
+curl http://localhost:8000/api/health
+curl -X POST http://localhost:8000/api/auth/login -d '{"username":"admin","password":"admin123"}'
+
+## 互测
+python3 debug-round-01/agent/run_agent.py debug-round-01/agent/case-a.driver.json
+python3 debug-round-01/agent/run_agent.py debug-round-01/agent/case-b-run1.driver.json
+# Case B run1 共尝试 3 次：
+#   attempt1: JSON 解析 blocked (driver 第一次)
+#   attempt2: 修复 parseJson 后重跑，maxNoProgress blocked
+#   attempt3: 修复 requiredOperations 加载后重跑，598s failed
+# Case B run2: 经用户确认“完整链路跑不过”，用户中止，未完成
+
+## 取证
+git diff > debug-round-01/git-diff.patch

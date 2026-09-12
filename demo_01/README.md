@@ -19,6 +19,9 @@ cd frontend
 npm install
 npm run dev
 # 打开 http://localhost:5173
+
+# 3. 测试前重置（清空运行期数据并恢复默认管理员 admin / admin123）
+python reset_demo.py
 ```
 
 ## 功能

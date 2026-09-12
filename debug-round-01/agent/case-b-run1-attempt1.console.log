@@ -1,0 +1,7 @@
+WebUI step agent connected. session=case-b-run1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-01/agent/case-b-run1.jsonl
+Type /help for commands.
+> running case: Data-Algorithm Studio 冒烟业务链路
+[2] blocked: Case decision failed: MiniMax returned invalid JSON: {"kind":"operation","reason":"开始登录流程：填入用户名 admin","completes":["login_fill_username"],"operation":{"toolName":"fill","arguments":{"uid": "1_5", "value": "admin"}}}
+{"kind":"operation","reason":"填入密码 admin123","completes":["login_fill_password"],"operation":{"toolName":"fill","arguments":{"uid": "1_7 actions=0 modelCalls=1
+> 

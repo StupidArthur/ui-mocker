@@ -1,0 +1,6 @@
+WebUI step agent connected. session=case-a
+Artifact: /Users/arthur/code/ui-mocker/debug-round-01/agent/case-a.jsonl
+Type /help for commands.
+> running case: Login to Data-Algorithm Studio as admin and reach datasets page mode=state_reached expected=8000ms timeout=30000ms
+[1] passed: URL is http://localhost:5173/datasets, page heading '数据集' is visible, admin user is logged in (shown as 'admin' / '管理员'), and the success message '登录成功' is displayed. All required operations are completed and the success state (URL contains '/datasets') is reached. actions=3 modelCalls=4
+> 

@@ -1,0 +1,30 @@
+INFO:     Started server process [18229]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58590 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58596 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58819 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58820 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58822 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59014 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59017 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59021 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18229]
+nohup: .venv/bin/python: No such file or directory
+INFO:     Started server process [26059]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59387 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59389 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59426 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59429 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59433 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26059]

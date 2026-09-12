@@ -44,6 +44,17 @@ describe("MiniMax providers", () => {
     expect(result.kind).toBe("observe");
   });
 
+  it("uses the first complete JSON object when the model concatenates several", async () => {
+    const provider = new MiniMaxCaseAgentProvider(async () => '{"kind":"operation","reason":"第一步","operation":{"toolName":"fill","arguments":{"uid":"1","value":"admin"}}}\n{"kind":"operation","reason":"第二步","operation":{"toolName":"fill","arguments":{"uid":"2","value":"admin123"}}}');
+    const result = await provider.decide({
+      testCase: { name: "登录", description: "登录", completion: { mode: "operation_succeeded", success: ["完成"], failure: [] }, timing: { expectedMs: 3000, timeoutMs: 15000 } },
+      current: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: {}, toolCalls: [] },
+      capabilities: [{ name: "fill" }], history: [], actionCount: 0, elapsedMs: 0, remainingMs: 15000, completedOperationIds: [], pendingOperations: [{ id: "fill_username", description: "填用户名" }],
+    });
+    expect(result.kind).toBe("operation");
+    expect(result.operation).toEqual({ toolName: "fill", arguments: { uid: "1", value: "admin" } });
+  });
+
   it("compiles an operation-only instruction with operation_succeeded mode", async () => {
     const provider = new MiniMaxCaseCompilerProvider(async () => JSON.stringify({
       name: "点击专家模式", description: "ignored",

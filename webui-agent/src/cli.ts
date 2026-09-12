@@ -111,10 +111,14 @@ function normalizeCase(value: unknown): TestCaseDefinition {
     return Number(match[1]) * scale[match[2].toLowerCase()];
   };
   const list = (input: unknown): string[] => Array.isArray(input) ? input.map(String) : input == null ? [] : [String(input)];
+  const requiredOperations = Array.isArray(item.requiredOperations)
+    ? item.requiredOperations.map((operation: any) => ({ id: String(operation?.id ?? ""), description: String(operation?.description ?? "") }))
+    : undefined;
   return {
     name: String(item.name ?? ""), description: String(item.description ?? ""), startUrl: item.startUrl ?? item.start_url,
     completion: { mode: item.completion?.mode ?? "state_reached", success: list(item.completion?.success), failure: list(item.completion?.failure) },
     timing: { expectedMs: duration(item.timing?.expectedMs ?? item.timing?.expected), timeoutMs: duration(item.timing?.timeoutMs ?? item.timing?.timeout) },
+    requiredOperations,
     limits: item.limits,
   };
 }

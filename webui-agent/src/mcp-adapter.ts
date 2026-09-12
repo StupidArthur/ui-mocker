@@ -111,8 +111,14 @@ export class ChromeDevtoolsMcpAdapter implements BrowserAdapter {
   private findTool(names: string[]): string | undefined { return names.find((name) => this.tools.some((tool) => tool.name === name)); }
 }
 
+/** 固定的 chrome-devtools-mcp 版本：避免 @latest 在仓库之外漂移，保证同一 commit 行为可复现。
+ *  1.7.0 是 README 记录的端到端验证日期（2026-08-23）时 @latest 实际解析到的版本，
+ *  其 navigate_page / take_snapshot 不要求 pageId，与现有 adapter 兼容；
+ *  更新的 1.8.0+ 将 pageId 改为必填，会破坏 setup 与快照采集。 */
+export const CHROME_DEVTOOLS_MCP_VERSION = "1.7.0";
+
 export function defaultMcpArgs(headless = false): string[] {
-  const args = ["-y", "chrome-devtools-mcp@latest", "--isolated"];
+  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated"];
   if (headless) args.push("--headless");
   return args;
 }

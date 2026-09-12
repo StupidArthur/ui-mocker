@@ -1,0 +1,8 @@
+{
+  "session_id": "case-b-run1",
+  "artifact": "/Users/arthur/code/ui-mocker/debug-round-01/agent/case-b-run1.jsonl",
+  "console": "/Users/arthur/code/ui-mocker/debug-round-01/agent/case-b-run1.console.log",
+  "commands": ["/run /Users/arthur/code/ui-mocker/debug-round-01/agent/case-b.yaml"],
+  "case_timeout": 780,
+  "mcp_log": "/Users/arthur/code/ui-mocker/debug-round-01/agent/mcp-stderr.log"
+}
