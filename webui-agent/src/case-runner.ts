@@ -53,8 +53,12 @@ export class TestCaseRunner {
         if (actionCount >= maxActions) return finish("blocked", `Maximum action count reached (${maxActions}).`);
         if (!actionCapabilities.some((tool) => tool.name === decision.operation?.toolName)) return finish("blocked", `Unavailable or observation-only MCP tool: ${decision.operation.toolName}`);
         const completes = decision.completes ?? [];
-        if (requiredIds.size > 0 && (completes.length === 0 || completes.some((id) => !requiredIds.has(id) || completedIds.has(id)))) {
-          history.push(`contract correction: operation.completes must contain only pending IDs. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
+        const invalidCompletedIds = completes.some((id) => !requiredIds.has(id) || completedIds.has(id));
+        // state_reached 允许 prerequisite/intermediate 动作（打开弹窗、选文件、关闭弹窗等）不消费任何 operation ID；
+        // operation_succeeded 仍要求每个 MCP 操作至少消费一个 pending operation。
+        const emptyCompletesAllowed = testCase.completion.mode === "state_reached";
+        if (requiredIds.size > 0 && (invalidCompletedIds || (!emptyCompletesAllowed && completes.length === 0))) {
+          history.push(`contract correction: operation.completes must contain only pending IDs${emptyCompletesAllowed ? " (or be empty for a prerequisite action)" : ""}. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
           if (history.length > 10) history.shift();
           noProgress += 1;
           iteration.finishedAt = now();
@@ -75,13 +79,19 @@ export class TestCaseRunner {
           continue;
         }
         iteration.operation = await this.adapter.callTool(decision.operation.toolName, decision.operation.arguments ?? {});
-        lastOperationFingerprint = operationFingerprint;
         actionCount += 1;
+        if (iteration.operation.error) {
+          // 让下一轮模型看到真实 MCP 错误（如参数 schema 校验失败），并允许它用相同参数重试。
+          lastOperationFingerprint = undefined;
+          history.push(`tool ${decision.operation.toolName} failed: ${iteration.operation.error.message}`);
+        } else {
+          lastOperationFingerprint = operationFingerprint;
+          completes.forEach((id) => completedIds.add(id));
+          history.push(`action ${decision.operation.toolName}: ${decision.reason}`);
+        }
+        if (history.length > 10) history.shift();
         iteration.immediate = await this.adapter.captureShot("takeShotImmediate");
         if (iteration.immediate.error) return finish("blocked", iteration.immediate.error.message);
-        if (!iteration.operation.error) completes.forEach((id) => completedIds.add(id));
-        history.push(`action ${decision.operation.toolName}: ${decision.reason}`);
-        if (history.length > 10) history.shift();
         current = iteration.immediate;
         noProgress = 0;
         iteration.finishedAt = now();

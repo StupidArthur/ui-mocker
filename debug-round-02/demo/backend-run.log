@@ -1,0 +1,55 @@
+INFO:     Started server process [30330]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59735 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59739 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59807 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59810 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59814 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60053 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60055 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60099 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60102 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60105 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60121 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60122 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60123 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60124 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60125 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60126 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60151 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60152 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60153 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60154 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60156 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60155 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60172 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60173 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60175 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60174 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60178 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60179 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60436 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60439 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60442 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60449 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60448 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60454 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60455 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60479 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60480 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60481 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60482 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60483 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60484 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60517 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60518 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60520 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60519 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60522 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60521 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30330]

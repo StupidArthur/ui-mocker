@@ -1,0 +1,134 @@
+diff --git a/webui-agent/src/case-runner.ts b/webui-agent/src/case-runner.ts
+index 2c4610c..7a9152a 100644
+--- a/webui-agent/src/case-runner.ts
++++ b/webui-agent/src/case-runner.ts
+@@ -53,8 +53,12 @@ export class TestCaseRunner {
+         if (actionCount >= maxActions) return finish("blocked", `Maximum action count reached (${maxActions}).`);
+         if (!actionCapabilities.some((tool) => tool.name === decision.operation?.toolName)) return finish("blocked", `Unavailable or observation-only MCP tool: ${decision.operation.toolName}`);
+         const completes = decision.completes ?? [];
+-        if (requiredIds.size > 0 && (completes.length === 0 || completes.some((id) => !requiredIds.has(id) || completedIds.has(id)))) {
+-          history.push(`contract correction: operation.completes must contain only pending IDs. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
++        const invalidCompletedIds = completes.some((id) => !requiredIds.has(id) || completedIds.has(id));
++        // state_reached 允许 prerequisite/intermediate 动作（打开弹窗、选文件、关闭弹窗等）不消费任何 operation ID；
++        // operation_succeeded 仍要求每个 MCP 操作至少消费一个 pending operation。
++        const emptyCompletesAllowed = testCase.completion.mode === "state_reached";
++        if (requiredIds.size > 0 && (invalidCompletedIds || (!emptyCompletesAllowed && completes.length === 0))) {
++          history.push(`contract correction: operation.completes must contain only pending IDs${emptyCompletesAllowed ? " (or be empty for a prerequisite action)" : ""}. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
+           if (history.length > 10) history.shift();
+           noProgress += 1;
+           iteration.finishedAt = now();
+@@ -75,13 +79,19 @@ export class TestCaseRunner {
+           continue;
+         }
+         iteration.operation = await this.adapter.callTool(decision.operation.toolName, decision.operation.arguments ?? {});
+-        lastOperationFingerprint = operationFingerprint;
+         actionCount += 1;
++        if (iteration.operation.error) {
++          // 让下一轮模型看到真实 MCP 错误（如参数 schema 校验失败），并允许它用相同参数重试。
++          lastOperationFingerprint = undefined;
++          history.push(`tool ${decision.operation.toolName} failed: ${iteration.operation.error.message}`);
++        } else {
++          lastOperationFingerprint = operationFingerprint;
++          completes.forEach((id) => completedIds.add(id));
++          history.push(`action ${decision.operation.toolName}: ${decision.reason}`);
++        }
++        if (history.length > 10) history.shift();
+         iteration.immediate = await this.adapter.captureShot("takeShotImmediate");
+         if (iteration.immediate.error) return finish("blocked", iteration.immediate.error.message);
+-        if (!iteration.operation.error) completes.forEach((id) => completedIds.add(id));
+-        history.push(`action ${decision.operation.toolName}: ${decision.reason}`);
+-        if (history.length > 10) history.shift();
+         current = iteration.immediate;
+         noProgress = 0;
+         iteration.finishedAt = now();
+diff --git a/webui-agent/src/minimax-provider.ts b/webui-agent/src/minimax-provider.ts
+index 263fb3e..a94b209 100644
+--- a/webui-agent/src/minimax-provider.ts
++++ b/webui-agent/src/minimax-provider.ts
+@@ -149,7 +149,7 @@ Return JSON only using one shape:
+ {"kind":"passed","reason":"explicit success evidence"}
+ {"kind":"failed","reason":"explicit failure evidence"}
+ {"kind":"blocked","reason":"..."}
+-First obey completion.mode and the structured pendingOperations list. The currentPage field always contains the latest fresh DOM snapshot. When choosing an operation, completes must contain the exact IDs from pendingOperations that this single MCP call will complete; one batch tool may complete multiple IDs. Never repeat IDs in completedOperationIds. For operation_succeeded, execute pending operations until none remain; do not wait for or invent an additional UI state, and NEVER return observe. For state_reached, finish required operations, then check completion.success/failure and observe only while the requested state is pending. Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure. Do not observe merely to confirm a synchronous action again. Never invent tools, schema fields, or operation IDs. Use feedbackMode=long only for genuinely long jobs, considering expectedMs.`;
++First obey completion.mode and the structured pendingOperations list. The currentPage field always contains the latest fresh DOM snapshot. When choosing an operation, completes must contain the exact IDs from pendingOperations that this single MCP call will complete; one batch tool may complete multiple IDs. Never repeat IDs in completedOperationIds. For operation_succeeded, every operation must complete at least one pending ID: execute pending operations until none remain; do not wait for or invent an additional UI state, and NEVER return observe. For state_reached, a prerequisite/intermediate action (opening a dialog, selecting a file, filling a form, closing a dialog, navigating) may use completes=[]; only include an operation ID when this single MCP call actually completes that requested operation. For state_reached, finish required operations, then check completion.success/failure and observe only while the requested state is pending; when an executable action is still needed to make progress, perform it instead of observing. Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure. Do not observe merely to confirm a synchronous action again. Never invent tools, schema fields, or operation IDs. Use feedbackMode=long only for genuinely long jobs, considering expectedMs.`;
+ 
+ const CASE_COMPILE_PROMPT = `Compile one natural-language Web UI instruction into a stable test case contract. Return JSON only:
+ {"name":"...","description":"...","requiredOperations":[{"id":"stable_snake_case_id","description":"one requested operation"}],"completion":{"mode":"operation_succeeded|state_reached","success":["..."],"failure":["..."]},"timing":{"expectedMs":5000,"timeoutMs":30000},"limits":{"maxActions":12,"maxNoProgress":4}}
+diff --git a/webui-agent/test/case-runner.test.ts b/webui-agent/test/case-runner.test.ts
+index 8ade5c2..60310bf 100644
+--- a/webui-agent/test/case-runner.test.ts
++++ b/webui-agent/test/case-runner.test.ts
+@@ -107,4 +107,73 @@ describe("TestCaseRunner", () => {
+     expect(result.actionCount).toBe(1);
+     expect(calls).toBe(1);
+   });
++
++  it("allows prerequisite actions with empty completes for state_reached", async () => {
++    const adapter = new CaseAdapter();
++    const decisions: CaseDecision[] = [
++      { kind: "operation", reason: "open submit dialog", operation: { toolName: "click", arguments: { uid: "open" } } },
++      { kind: "operation", reason: "submit", completes: ["submit"], operation: { toolName: "click", arguments: { uid: "submit" } } },
++      { kind: "passed", reason: "done" },
++    ];
++    const agent: CaseAgentProvider = { async decide() { return decisions.shift()!; } };
++    const result = await new TestCaseRunner(adapter, agent).run({
++      ...testCase,
++      completion: { mode: "state_reached", success: ["done"], failure: [] },
++      requiredOperations: [{ id: "submit", description: "submit" }],
++    }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
++    expect(result.status).toBe("passed");
++    expect(result.actionCount).toBe(2);
++    expect(result.completedOperationIds).toEqual(["submit"]);
++    expect(adapter.calls.filter((call) => call === "operate:click")).toHaveLength(2);
++  });
++
++  it("still rejects empty completes for operation_succeeded", async () => {
++    const adapter = new CaseAdapter();
++    const decisions: CaseDecision[] = [
++      { kind: "operation", reason: "prereq", operation: { toolName: "click", arguments: { uid: "open" } } },
++      { kind: "operation", reason: "submit", completes: ["submit"], operation: { toolName: "click", arguments: { uid: "submit" } } },
++    ];
++    const agent: CaseAgentProvider = { async decide() { return decisions.shift()!; } };
++    const result = await new TestCaseRunner(adapter, agent).run({
++      ...testCase,
++      completion: { mode: "operation_succeeded", success: ["all operations done"], failure: [] },
++      requiredOperations: [{ id: "submit", description: "submit" }],
++    }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
++    expect(result.status).toBe("passed");
++    expect(result.actionCount).toBe(1);
++    expect(adapter.calls.filter((call) => call === "operate:click")).toHaveLength(1);
++  });
++
++  it("reports MCP operation errors to the next turn and allows an identical retry", async () => {
++    class ErroringAdapter implements BrowserAdapter {
++      calls: string[] = [];
++      private first = true;
++      async connect() {}
++      async disconnect() {}
++      async listTools(): Promise<ToolDescriptor[]> { return [{ name: "upload_file" }]; }
++      async setup(): Promise<undefined> { return undefined; }
++      async captureShot(phase: PhaseRecord["phase"]): Promise<PhaseRecord> { return { phase, startedAt: "", finishedAt: "", raw: { page: this.first ? 0 : 1 }, toolCalls: [] }; }
++      async callTool(toolName: string, args: Record<string, unknown>): Promise<ToolInvocation> {
++        this.calls.push(toolName);
++        if (this.first) {
++          this.first = false;
++          return { toolName, arguments: args, startedAt: "", finishedAt: "", error: { name: "McpToolError", message: "Input validation error: filePaths is required" } };
++        }
++        return { toolName, arguments: args, startedAt: "", finishedAt: "", result: { ok: true } };
++      }
++      async waitForStability(): Promise<WaitResult> { throw new Error("unused"); }
++    }
++    const adapter = new ErroringAdapter();
++    const histories: string[][] = [];
++    const decisions: CaseDecision[] = [
++      { kind: "operation", reason: "upload", operation: { toolName: "upload_file", arguments: { filePath: "x" } } },
++      { kind: "operation", reason: "retry upload", operation: { toolName: "upload_file", arguments: { filePath: "x" } } },
++      { kind: "passed", reason: "done" },
++    ];
++    const agent: CaseAgentProvider = { async decide(context) { histories.push([...context.history]); return decisions.shift()!; } };
++    const result = await new TestCaseRunner(adapter, agent).run(testCase, { sessionId: "s", sequence: 1, capabilities: [{ name: "upload_file" }] });
++    expect(result.status).toBe("passed");
++    expect(adapter.calls).toEqual(["upload_file", "upload_file"]);
++    expect(histories[1].some((entry) => entry.includes("filePaths is required"))).toBe(true);
++  });
+ });

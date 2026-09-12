@@ -107,4 +107,73 @@ describe("TestCaseRunner", () => {
     expect(result.actionCount).toBe(1);
     expect(calls).toBe(1);
   });
+
+  it("allows prerequisite actions with empty completes for state_reached", async () => {
+    const adapter = new CaseAdapter();
+    const decisions: CaseDecision[] = [
+      { kind: "operation", reason: "open submit dialog", operation: { toolName: "click", arguments: { uid: "open" } } },
+      { kind: "operation", reason: "submit", completes: ["submit"], operation: { toolName: "click", arguments: { uid: "submit" } } },
+      { kind: "passed", reason: "done" },
+    ];
+    const agent: CaseAgentProvider = { async decide() { return decisions.shift()!; } };
+    const result = await new TestCaseRunner(adapter, agent).run({
+      ...testCase,
+      completion: { mode: "state_reached", success: ["done"], failure: [] },
+      requiredOperations: [{ id: "submit", description: "submit" }],
+    }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
+    expect(result.status).toBe("passed");
+    expect(result.actionCount).toBe(2);
+    expect(result.completedOperationIds).toEqual(["submit"]);
+    expect(adapter.calls.filter((call) => call === "operate:click")).toHaveLength(2);
+  });
+
+  it("still rejects empty completes for operation_succeeded", async () => {
+    const adapter = new CaseAdapter();
+    const decisions: CaseDecision[] = [
+      { kind: "operation", reason: "prereq", operation: { toolName: "click", arguments: { uid: "open" } } },
+      { kind: "operation", reason: "submit", completes: ["submit"], operation: { toolName: "click", arguments: { uid: "submit" } } },
+    ];
+    const agent: CaseAgentProvider = { async decide() { return decisions.shift()!; } };
+    const result = await new TestCaseRunner(adapter, agent).run({
+      ...testCase,
+      completion: { mode: "operation_succeeded", success: ["all operations done"], failure: [] },
+      requiredOperations: [{ id: "submit", description: "submit" }],
+    }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
+    expect(result.status).toBe("passed");
+    expect(result.actionCount).toBe(1);
+    expect(adapter.calls.filter((call) => call === "operate:click")).toHaveLength(1);
+  });
+
+  it("reports MCP operation errors to the next turn and allows an identical retry", async () => {
+    class ErroringAdapter implements BrowserAdapter {
+      calls: string[] = [];
+      private first = true;
+      async connect() {}
+      async disconnect() {}
+      async listTools(): Promise<ToolDescriptor[]> { return [{ name: "upload_file" }]; }
+      async setup(): Promise<undefined> { return undefined; }
+      async captureShot(phase: PhaseRecord["phase"]): Promise<PhaseRecord> { return { phase, startedAt: "", finishedAt: "", raw: { page: this.first ? 0 : 1 }, toolCalls: [] }; }
+      async callTool(toolName: string, args: Record<string, unknown>): Promise<ToolInvocation> {
+        this.calls.push(toolName);
+        if (this.first) {
+          this.first = false;
+          return { toolName, arguments: args, startedAt: "", finishedAt: "", error: { name: "McpToolError", message: "Input validation error: filePaths is required" } };
+        }
+        return { toolName, arguments: args, startedAt: "", finishedAt: "", result: { ok: true } };
+      }
+      async waitForStability(): Promise<WaitResult> { throw new Error("unused"); }
+    }
+    const adapter = new ErroringAdapter();
+    const histories: string[][] = [];
+    const decisions: CaseDecision[] = [
+      { kind: "operation", reason: "upload", operation: { toolName: "upload_file", arguments: { filePath: "x" } } },
+      { kind: "operation", reason: "retry upload", operation: { toolName: "upload_file", arguments: { filePath: "x" } } },
+      { kind: "passed", reason: "done" },
+    ];
+    const agent: CaseAgentProvider = { async decide(context) { histories.push([...context.history]); return decisions.shift()!; } };
+    const result = await new TestCaseRunner(adapter, agent).run(testCase, { sessionId: "s", sequence: 1, capabilities: [{ name: "upload_file" }] });
+    expect(result.status).toBe("passed");
+    expect(adapter.calls).toEqual(["upload_file", "upload_file"]);
+    expect(histories[1].some((entry) => entry.includes("filePaths is required"))).toBe(true);
+  });
 });
