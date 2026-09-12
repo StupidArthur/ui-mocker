@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# 运行期数据（数据库与上传/派生文件）
+backend/data/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 环境与编辑器
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/

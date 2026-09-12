@@ -1,0 +1,13 @@
+name: 调试登录成功
+description: |
+  在登录页面输入用户名 tester 和密码 123456，然后提交登录。
+completion:
+  mode: state_reached
+  success: 页面显示“欢迎回来，tester”
+  failure: 页面显示“账号或密码错误”
+timing:
+  expected: 3秒
+  timeout: 30秒
+limits:
+  maxActions: 6
+  maxNoProgress: 4

@@ -1,0 +1,63 @@
+{
+  "测试时间": "2026-09-12 10:40:27",
+  "测试环境": "前端 http://localhost:5173 ；后端 http://localhost:8000（Chrome DevTools MCP，--isolated）；修复后复跑",
+  "用例名称": "Data-Algorithm Studio 冒烟测试",
+  "步骤记录": [
+    { "步骤": "1 打开登录页并校验", "操作": "navigate /login", "实际结果": "显示标题与用户名/密码/登录按钮", "状态": "成功", "异常说明": "无" },
+    { "步骤": "2 输入管理员账号密码", "操作": "fill #username=admin，#password=admin123", "实际结果": "两输入框 value 回显正确", "状态": "成功", "异常说明": "无" },
+    { "步骤": "3 点击登录", "操作": "click [data-testid=login-submit]", "实际结果": "跳转 /datasets，侧边栏出现「管理后台」", "状态": "成功", "异常说明": "无" },
+    { "步骤": "4 打开上传对话框", "操作": "click [data-testid=upload-dataset]", "实际结果": "出现「上传数据集」对话框与文件控件", "状态": "成功", "异常说明": "无" },
+    { "步骤": "5 选择 CSV 并上传", "操作": "upload sensor_sample.csv；click [data-testid=upload-submit]", "实际结果": "卡片「sensor_sample / 25 行 × 4 列 · 时间列 time」出现", "状态": "成功", "异常说明": "应用自动将名称回填为文件名（符合当前设计）" },
+    { "步骤": "6 打开数据集预览（验证格式修复）", "操作": "click 数据集卡片", "实际结果": "预览表数值统一为 4 位小数：72.1000 / 77.0000 / 102.0000 / 9.0000 / 84.0000 / 8.0000（原缺陷已修复）", "状态": "成功", "异常说明": "无" },
+    { "步骤": "7 删除入口取消", "操作": "click [data-testid=dataset-delete]；click「取消」", "实际结果": "确认框文案更新为「若该数据集仍被项目引用将无法删除」；取消后数据集保留", "状态": "成功", "异常说明": "点击删除时预览已自动关闭（步骤「再关闭预览」为冗余）" },
+    { "步骤": "8 进入我的项目", "操作": "click 导航「我的项目」", "实际结果": "跳转 /projects，出现 [data-testid=create-project]", "状态": "成功", "异常说明": "无" },
+    { "步骤": "9 新建项目并绑定数据集", "操作": "click [data-testid=create-project]；fill #p-name=冒烟项目；#p-dataset 默认 sensor_sample；click [data-testid=project-submit]", "实际结果": "跳转工作区，血缘树出现根节点", "状态": "成功", "异常说明": "无" },
+    { "步骤": "10 打开执行算法对话框", "操作": "click [data-testid=run-algorithm]", "实际结果": "弹出「执行算法」，默认「[统计] 描述性统计」", "状态": "成功", "异常说明": "无" },
+    { "步骤": "11 执行描述性统计", "操作": "click [data-testid=run-submit]", "实际结果": "生成待审核运行，自动打开结果详情；关闭后列表显示「待审核」", "状态": "成功", "异常说明": "执行后自动打开结果详情（应用行为）" },
+    { "步骤": "12 审核通过统计结果", "操作": "click [data-testid=run-approve-dialog]", "实际结果": "状态「已通过」，血缘树新增子节点「描述性统计」", "状态": "成功", "异常说明": "无" },
+    { "步骤": "13 选中子节点并打开执行对话框", "操作": "click [data-testid=lineage-node]（描述性统计）；click [data-testid=run-algorithm]", "实际结果": "详情显示「算法结果节点」，弹出执行对话框", "状态": "成功", "异常说明": "无" },
+    { "步骤": "14 选择线性回归外推并设置 horizon=3", "操作": "#algo=linear_forecast（value+change）；#param-horizon=3；click [data-testid=run-submit]", "实际结果": "结果 total_rows=28，派生数据预览 28 行，数值 4 位小数", "状态": "成功", "异常说明": "原生 select 采用 DOM 赋值+change 稳定选择（已补充 data-testid）" },
+    { "步骤": "15 查看结果详情", "操作": "结果详情已随执行自动打开", "实际结果": "弹窗标题「线性回归外推 · 结果详情」，含「派生数据预览（共 28 行）」", "状态": "成功", "异常说明": "该步骤为冗余（详情已自动打开）" },
+    { "步骤": "16 通过并沉淀为节点", "操作": "click [data-testid=run-approve-dialog]；关闭弹窗", "实际结果": "血缘树 3 节点：数据集 → 描述性统计 → 线性回归外推", "状态": "成功", "异常说明": "无" },
+    { "步骤": "17 公开项目", "操作": "click [data-testid=project-publish]", "实际结果": "徽标变「已公开」，按钮变「取消公开」", "状态": "成功", "异常说明": "无" },
+    { "步骤": "18 进入管理后台", "操作": "navigate /admin", "实际结果": "出现 [data-testid=create-account] 与用户表格", "状态": "成功", "异常说明": "无" },
+    { "步骤": "19 创建账号 smoke_user", "操作": "click [data-testid=create-account]；fill #u-name=smoke_user、#u-pass=Passw0rd；click [data-testid=account-submit]", "实际结果": "表格新增 smoke_user 行", "状态": "成功", "异常说明": "无" },
+    { "步骤": "20 重置 smoke_user 密码", "操作": "click smoke_user 行 [data-testid=reset-password]；fill #reset-pass=Reset1234；click [data-testid=reset-submit]", "实际结果": "出现成功提示「密码已重置」", "状态": "成功", "异常说明": "无" },
+    { "步骤": "21 登出", "操作": "click [data-testid=logout]", "实际结果": "跳转 /login，显示登录表单", "状态": "成功", "异常说明": "无" }
+  ],
+  "关键结果": {
+    "备注": "修复后复跑：21/21 步全部成功。修复项均验证通过——(1) 数据集被引用时删除返回 409，解除引用后可删；(2) 数值预览统一 4 位小数；(3) 全站核心元素补充 data-testid，用例定位稳定；(4) 新增全局异常兜底与节点数据不可读友好报错。"
+  },
+  "异常汇总": [],
+  "用例优化分析": [
+    {
+      "步骤编号": "5",
+      "问题类型": "完成标准模糊",
+      "问题描述": "用例要求「名称留空」，应用选文件后自动回填文件名，描述与实际不一致。",
+      "优化建议": "改为断言自动回填，或明确清空 #ds-name 以验证后端兜底。",
+      "推荐改写步骤": "选择 sensor_sample.csv；断言 #ds-name 自动等于 sensor_sample；点击 [data-testid=upload-submit]；断言卡片含「25 行」。"
+    },
+    {
+      "步骤编号": "11 / 15",
+      "问题类型": "冗余步骤 + 完成标准模糊",
+      "问题描述": "执行算法后结果详情自动打开，步骤 11 的列表断言被遮挡、步骤 15「点击查看结果」无点击对象。",
+      "优化建议": "把「详情自动打开」并入执行步骤的完成标准，删除独立查看步骤。",
+      "推荐改写步骤": "点击 [data-testid=run-submit]；断言弹窗标题「<算法名> · 结果详情」出现；关闭弹窗后断言列表状态徽标。"
+    },
+    {
+      "步骤编号": "7",
+      "问题类型": "冗余步骤",
+      "问题描述": "用例含「点击删除→取消→再关闭预览」，点击删除时预览弹窗已自动关闭。",
+      "优化建议": "删除「再关闭预览」，拆成「确认框出现」与「取消后数据保留」两个校验点。",
+      "推荐改写步骤": "点击 [data-testid=dataset-delete]；等待确认框文本出现；点击「取消」；断言数据集卡片仍在。"
+    },
+    {
+      "步骤编号": "全局",
+      "问题类型": "定位不稳定",
+      "问题描述": "原用例依赖中文文本匹配，受文案影响且不稳定。",
+      "优化建议": "已落地：核心交互元素补充 data-testid，用例改用属性定位。",
+      "推荐改写步骤": "统一使用 data-testid：login-submit、upload-dataset、upload-submit、dataset-delete、create-project、project-submit、run-algorithm、run-submit、run-approve、run-approve-dialog、lineage-node、project-publish、create-account、account-submit、reset-password、reset-submit、logout。"
+    }
+  ],
+  "优化后建议用例": "已同步至 docs/ui-smoke-test-case.md（优化版）。核心变更：全程使用 data-testid 定位；步骤 5 断言名称自动回填；合并步骤 11/15（执行后详情自动打开，关闭后断言列表）；步骤 7 去掉冗余的关闭预览动作；步骤 14 明确使用 #algo 的 value=linear_forecast 配合 change 事件并设置 #param-horizon=3。测试目标与业务边界不变。"
+}

@@ -1,0 +1,18 @@
+name: 正确账号登录
+description: |
+  使用测试账号完成登录。根据当前页面依次完成必要输入和提交操作。
+start_url: http://localhost:3000/login
+completion:
+  mode: state_reached
+  success:
+    - 页面进入首页
+    - 页面显示当前用户名
+  failure:
+    - 页面提示账号或密码错误
+    - 页面显示服务异常
+timing:
+  expected: 3秒
+  timeout: 15秒
+limits:
+  maxActions: 10
+  maxNoProgress: 5

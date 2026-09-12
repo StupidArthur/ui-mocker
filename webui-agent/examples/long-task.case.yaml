@@ -1,0 +1,15 @@
+name: 启动并等待模型微调
+description: |
+  使用页面默认参数提交模型微调任务，并等待任务得到最终结果。
+completion:
+  mode: state_reached
+  success: 页面显示“训练完成”
+  failure:
+    - 页面显示“训练失败”
+    - 页面出现无法恢复的错误
+timing:
+  expected: 30分钟
+  timeout: 60分钟
+limits:
+  maxActions: 20
+  maxNoProgress: 20
