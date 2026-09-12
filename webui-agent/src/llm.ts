@@ -21,6 +21,40 @@ export type ChatFn = (messages: ChatMessage[]) => Promise<string>;
 
 export type LLMProtocol = "chat_completions" | "responses";
 
+export interface LLMUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+}
+
+/** chat 调用的结构化结果：content 供 Provider 使用，usage 供成本/取证记录。 */
+export interface LLMChatResult {
+  content: string;
+  usage?: LLMUsage;
+}
+
+export interface LLMUsageTotals extends LLMUsage {
+  calls: number;
+}
+
+/** 累计 LLM token 消耗的轻量计数器。 */
+export class LLMUsageTracker {
+  private calls = 0;
+  private totals: LLMUsage = {};
+
+  record(usage?: LLMUsage): void {
+    if (!usage) return;
+    this.calls += 1;
+    this.totals.promptTokens = (this.totals.promptTokens ?? 0) + (usage.promptTokens ?? 0);
+    this.totals.completionTokens = (this.totals.completionTokens ?? 0) + (usage.completionTokens ?? 0);
+    this.totals.totalTokens = (this.totals.totalTokens ?? 0) + (usage.totalTokens ?? 0);
+  }
+
+  snapshot(): LLMUsageTotals {
+    return { calls: this.calls, ...this.totals };
+  }
+}
+
 export interface LLMClientConfig {
   /** 默认 chat_completions。 */
   protocol?: LLMProtocol;
@@ -39,7 +73,7 @@ export interface LLMClientConfig {
 export interface LLMClient {
   readonly protocol: LLMProtocol;
   readonly model: string;
-  chat(messages: ChatMessage[]): Promise<string>;
+  chat(messages: ChatMessage[]): Promise<LLMChatResult>;
 }
 
 export const CHAT_COMPLETIONS_DEFAULT_BASE_URL = "https://api.minimaxi.com/v1";
@@ -62,7 +96,7 @@ export class ChatCompletionsClient implements LLMClient {
     return this.config.baseUrl ?? CHAT_COMPLETIONS_DEFAULT_BASE_URL;
   }
 
-  async chat(messages: ChatMessage[]): Promise<string> {
+  async chat(messages: ChatMessage[]): Promise<LLMChatResult> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: buildHeaders(this.config),
@@ -75,10 +109,17 @@ export class ChatCompletionsClient implements LLMClient {
       }),
     });
     if (!response.ok) throw new Error(`LLM chat_completions failed: HTTP ${response.status} ${await response.text()}`);
-    const payload = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    };
     const content = payload.choices?.[0]?.message?.content;
     if (typeof content !== "string" || content.length === 0) throw new Error("LLM chat_completions returned no assistant content.");
-    return content;
+    const usage = payload.usage;
+    return {
+      content,
+      usage: usage ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens } : undefined,
+    };
   }
 }
 
@@ -95,7 +136,7 @@ export class ResponsesClient implements LLMClient {
     return this.config.baseUrl ?? RESPONSES_DEFAULT_BASE_URL;
   }
 
-  async chat(messages: ChatMessage[]): Promise<string> {
+  async chat(messages: ChatMessage[]): Promise<LLMChatResult> {
     const response = await fetch(`${this.baseUrl}/responses`, {
       method: "POST",
       headers: buildHeaders(this.config),
@@ -108,10 +149,17 @@ export class ResponsesClient implements LLMClient {
       }),
     });
     if (!response.ok) throw new Error(`LLM responses failed: HTTP ${response.status} ${await response.text()}`);
-    const payload = (await response.json()) as { output?: unknown };
+    const payload = (await response.json()) as {
+      output?: unknown;
+      usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
+    };
     const text = extractResponsesText(payload.output);
     if (!text) throw new Error("LLM responses returned no assistant text.");
-    return text;
+    const usage = payload.usage;
+    return {
+      content: text,
+      usage: usage ? { promptTokens: usage.input_tokens, completionTokens: usage.output_tokens, totalTokens: usage.total_tokens } : undefined,
+    };
   }
 }
 
@@ -183,7 +231,11 @@ function buildDefaultExtraBody(protocol: LLMProtocol, effort: "" | "low" | "high
   return undefined;
 }
 
-/** 把客户端转成上层 Provider 使用的 ChatFn。 */
-export function toChatFn(client: LLMClient): ChatFn {
-  return (messages) => client.chat(messages);
+/** 把客户端转成上层 Provider 使用的 ChatFn，并可选地把每次调用用量计入 tracker。 */
+export function toChatFn(client: LLMClient, tracker?: LLMUsageTracker): ChatFn {
+  return async (messages) => {
+    const result = await client.chat(messages);
+    tracker?.record(result.usage);
+    return result.content;
+  };
 }

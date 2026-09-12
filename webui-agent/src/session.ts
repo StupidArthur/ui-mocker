@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { type LLMUsageTracker } from "./llm.js";
 import { ArtifactRecord, BrowserAdapter, CaseAgentProvider, CaseVerifierProvider, SetupArtifact, StepArtifact, StepInput, TestCaseArtifact, TestCaseDefinition, JudgeProvider, ThinkProvider, ToolDescriptor, serializeError } from "./types.js";
 import { SingleStepRunner } from "./runner.js";
 import { TestCaseRunner } from "./case-runner.js";
@@ -13,6 +14,8 @@ export interface SessionOptions {
   caseVerifier?: CaseVerifierProvider;
   sink?: ArtifactSink;
   sessionId?: string;
+  /** 共享的 LLM token 用量计数器；存在时把本用例用量增量写入 case artifact。 */
+  usageTracker?: LLMUsageTracker;
 }
 
 export type SessionState = "created" | "connected" | "closed" | "fatal";
@@ -78,17 +81,20 @@ export class Session {
   async runCase(testCase: TestCaseDefinition): Promise<TestCaseArtifact> {
     this.requireConnected();
     if (!this.caseRunner) throw new Error("Session has no case agent provider.");
+    const usageBefore = this.options.usageTracker?.snapshot();
     if (testCase.startUrl) {
       const setup = await this.open(testCase.startUrl);
       if (setup.error) {
         const timestamp = new Date().toISOString();
         const artifact: TestCaseArtifact = { version: "0.3", recordType: "case", sessionId: this.sessionId, caseId: `case-${this.sequence + 1}`, sequence: ++this.sequence, testCase, status: "blocked", reason: `Start URL setup failed: ${setup.error.message}`, startedAt: timestamp, finishedAt: timestamp, actionCount: 0, modelCallCount: 0, completedOperationIds: [], iterations: [] };
+        this.attachUsageDelta(artifact, usageBefore);
         await this.write(artifact);
         return artifact;
       }
     }
     const sequence = ++this.sequence;
     const artifact = await this.caseRunner.run(testCase, { sessionId: this.sessionId, sequence, capabilities: this.capabilities, caseId: `case-${sequence}` });
+    this.attachUsageDelta(artifact, usageBefore);
     await this.write(artifact);
     return artifact;
   }
@@ -102,6 +108,18 @@ export class Session {
 
   private requireConnected(): void {
     if (this.state !== "connected") throw new Error(`Session is not connected (state: ${this.state}).`);
+  }
+
+  /** 把本用例的 LLM 用量增量（相对运行前）写入 artifact。 */
+  private attachUsageDelta(artifact: TestCaseArtifact, before?: { calls: number; promptTokens?: number; completionTokens?: number; totalTokens?: number }): void {
+    const after = this.options.usageTracker?.snapshot();
+    if (!before || !after) return;
+    artifact.usage = {
+      calls: after.calls - before.calls,
+      promptTokens: (after.promptTokens ?? 0) - (before.promptTokens ?? 0),
+      completionTokens: (after.completionTokens ?? 0) - (before.completionTokens ?? 0),
+      totalTokens: (after.totalTokens ?? 0) - (before.totalTokens ?? 0),
+    };
   }
 
   private async write(record: ArtifactRecord): Promise<void> { if (this.options.sink) await this.options.sink.write(record); }

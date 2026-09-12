@@ -1,6 +1,8 @@
 export type StepStatus = "passed" | "failed" | "blocked";
 export type TestCaseStatus = StepStatus | "timeout";
 
+import type { LLMUsageTotals } from "./llm.js";
+
 export type PhaseName =
   | "setup"
   | "takeShotBefore"
@@ -280,6 +282,8 @@ export interface TestCaseArtifact {
   actionCount: number;
   modelCallCount: number;
   completedOperationIds: string[];
+  /** 本用例累计的 LLM token 消耗（如有配置 tracker）。 */
+  usage?: LLMUsageTotals;
   iterations: CaseIteration[];
 }
 

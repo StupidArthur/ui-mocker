@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ChatCompletionsClient,
+  LLMUsageTracker,
   ResponsesClient,
   createLLMClient,
   extractResponsesText,
   resolveLLMConfig,
+  toChatFn,
   type ChatMessage,
 } from "../src/llm.js";
 
@@ -24,12 +26,14 @@ afterEach(() => {
 });
 
 describe("ChatCompletionsClient", () => {
-  it("POSTs to /chat/completions and returns assistant content", async () => {
-    fetchMock.mockResolvedValue(okResponse({ choices: [{ message: { content: "pong" } }] }));
+  it("POSTs to /chat/completions, returns content and parses usage", async () => {
+    fetchMock.mockResolvedValue(okResponse({ choices: [{ message: { content: "pong" } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }));
     const client = new ChatCompletionsClient({
       apiKey: "k", model: "m", baseUrl: "https://example.test/v1", maxTokens: 1234, extraBody: { thinking: { type: "disabled" } },
     });
-    await expect(client.chat(messages)).resolves.toBe("pong");
+    const result = await client.chat(messages);
+    expect(result.content).toBe("pong");
+    expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, totalTokens: 15 });
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://example.test/v1/chat/completions");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer k");
@@ -51,15 +55,18 @@ describe("ChatCompletionsClient", () => {
 });
 
 describe("ResponsesClient", () => {
-  it("POSTs to /responses with input and extracts output_text", async () => {
+  it("POSTs to /responses with input and extracts output_text and usage", async () => {
     fetchMock.mockResolvedValue(okResponse({
       output: [
         { type: "reasoning", summary: [] },
         { type: "message", content: [{ type: "output_text", text: "hello" }] },
       ],
+      usage: { input_tokens: 7, output_tokens: 3, total_tokens: 10 },
     }));
     const client = new ResponsesClient({ apiKey: "k", model: "gpt-x", baseUrl: "https://example.test/v1", maxTokens: 2048 });
-    await expect(client.chat(messages)).resolves.toBe("hello");
+    const result = await client.chat(messages);
+    expect(result.content).toBe("hello");
+    expect(result.usage).toEqual({ promptTokens: 7, completionTokens: 3, totalTokens: 10 });
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://example.test/v1/responses");
     const body = JSON.parse(init.body as string);
@@ -76,6 +83,24 @@ describe("ResponsesClient", () => {
     fetchMock.mockResolvedValue(okResponse({ output: [] }));
     const client = new ResponsesClient({ apiKey: "k" });
     await expect(client.chat(messages)).rejects.toThrow("no assistant text");
+  });
+});
+
+describe("LLMUsageTracker", () => {
+  it("accumulates tokens and call count, ignoring empty records", () => {
+    const tracker = new LLMUsageTracker();
+    tracker.record({ promptTokens: 1, completionTokens: 2, totalTokens: 3 });
+    tracker.record({ promptTokens: 4, completionTokens: 5, totalTokens: 9 });
+    tracker.record(undefined);
+    expect(tracker.snapshot()).toEqual({ calls: 2, promptTokens: 5, completionTokens: 7, totalTokens: 12 });
+  });
+
+  it("records usage through toChatFn into a shared tracker", async () => {
+    fetchMock.mockResolvedValue(okResponse({ choices: [{ message: { content: "hi" } }], usage: { total_tokens: 7 } }));
+    const tracker = new LLMUsageTracker();
+    const chat = toChatFn(new ChatCompletionsClient({ apiKey: "k" }), tracker);
+    await expect(chat([{ role: "user", content: "x" }])).resolves.toBe("hi");
+    expect(tracker.snapshot()).toEqual({ calls: 1, promptTokens: 0, completionTokens: 0, totalTokens: 7 });
   });
 });
 

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MemoryArtifactSink } from "../src/session.js";
 import { Session } from "../src/session.js";
+import { LLMUsageTracker } from "../src/llm.js";
 import { sanitizeForArtifact } from "../src/artifact-store.js";
 import { ScriptedThinkProvider, RuleBasedJudgeProvider } from "../src/providers.js";
-import { BrowserAdapter, PhaseRecord, ToolDescriptor, ToolInvocation, WaitConfig, WaitResult } from "../src/types.js";
+import { BrowserAdapter, CaseAgentProvider, PhaseRecord, TestCaseDefinition, ToolDescriptor, ToolInvocation, WaitConfig, WaitResult } from "../src/types.js";
 
 class SessionFakeAdapter implements BrowserAdapter {
   connects = 0; disconnects = 0; lists = 0; calls: string[] = []; page = "initial"; failNext = false;
@@ -53,6 +54,28 @@ describe("Session", () => {
     expect(failed.status).toBe("failed");
     expect(passed.status).toBe("passed");
     expect(session.status).toBe("connected");
+    await session.close();
+  });
+
+  it("attaches the per-case LLM usage delta to the case artifact", async () => {
+    const adapter = new SessionFakeAdapter();
+    const tracker = new LLMUsageTracker();
+    const caseAgent: CaseAgentProvider = {
+      async decide() {
+        tracker.record({ promptTokens: 1, completionTokens: 2, totalTokens: 3 });
+        return { kind: "passed", reason: "done" };
+      },
+    };
+    const sink = new MemoryArtifactSink();
+    const session = new Session({ adapter, thinker: new ScriptedThinkProvider({ toolName: "click" }), judge: new RuleBasedJudgeProvider(), caseAgent, usageTracker: tracker, sink, sessionId: "usage-test" });
+    await session.start();
+    const caseDef: TestCaseDefinition = {
+      name: "usage case", description: "d",
+      completion: { mode: "state_reached", success: ["done"], failure: [] },
+      timing: { expectedMs: 1000, timeoutMs: 5000 },
+    };
+    const artifact = await session.runCase(caseDef);
+    expect(artifact.usage).toEqual({ calls: 1, promptTokens: 1, completionTokens: 2, totalTokens: 3 });
     await session.close();
   });
 });

@@ -77,7 +77,7 @@ Artifact: artifacts/session-<session-id>.jsonl
 opened http://localhost:3000/login
 > /run examples/login.case.yaml
 running case: 正确账号登录
-[2] passed: ... actions=3 modelCalls=4
+[2] passed: ... actions=3 modelCalls=4 tokens=1234
 > /exit
 ```
 
@@ -158,6 +158,8 @@ Chrome DevTools MCP 的 stderr 默认不会写入 REPL，避免 `No handler regi
 - 实际工具名、参数、返回和错误；
 - DOM、截图等证据；
 - 最终状态与原因。
+
+Case 记录额外包含 `usage`（该用例的 LLM token 消耗：`calls` / `promptTokens` / `completionTokens` / `totalTokens`），由共享 `LLMUsageTracker` 累计（`src/llm.ts`）。
 
 排查问题时按以下顺序查看：
 

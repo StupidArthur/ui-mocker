@@ -5,18 +5,20 @@ import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import { ChromeDevtoolsMcpAdapter } from "./mcp-adapter.js";
 import { JsonlArtifactSink } from "./artifact-store.js";
+import { LLMUsageTracker } from "./llm.js";
 import { createMiniMaxCaseAgent, createMiniMaxCaseCompiler, createMiniMaxCaseVerifier, createMiniMaxProviders } from "./minimax-provider.js";
 import { Session } from "./session.js";
 import type { TestCaseDefinition } from "./types.js";
 
 export async function runRepl(): Promise<void> {
-  const { thinker, judge } = createMiniMaxProviders();
-  const caseAgent = createMiniMaxCaseAgent();
-  const caseCompiler = createMiniMaxCaseCompiler();
-  const caseVerifier = createMiniMaxCaseVerifier();
+  const usageTracker = new LLMUsageTracker();
+  const { thinker, judge } = createMiniMaxProviders(undefined, usageTracker);
+  const caseAgent = createMiniMaxCaseAgent(undefined, usageTracker);
+  const caseCompiler = createMiniMaxCaseCompiler(undefined, usageTracker);
+  const caseVerifier = createMiniMaxCaseVerifier(undefined, usageTracker);
   const sessionId = process.env.WEBUI_SESSION_ID ?? randomUUID();
   const artifactPath = process.env.WEBUI_ARTIFACT_PATH ?? `artifacts/session-${sessionId}.jsonl`;
-  const session = new Session({ adapter: new ChromeDevtoolsMcpAdapter(), thinker, judge, caseAgent, caseVerifier, sink: new JsonlArtifactSink(artifactPath), sessionId });
+  const session = new Session({ adapter: new ChromeDevtoolsMcpAdapter(), thinker, judge, caseAgent, caseVerifier, usageTracker, sink: new JsonlArtifactSink(artifactPath), sessionId });
   const rl = createInterface({ input: stdin, output: stdout, terminal: Boolean(process.stdout.isTTY) });
   let closing = false;
   const close = async () => {
@@ -50,7 +52,7 @@ export async function runRepl(): Promise<void> {
           const testCase = await loadCase(path);
           stdout.write(`running case: ${testCase.name}\n`);
           const artifact = await session.runCase(testCase);
-          stdout.write(`[${artifact.sequence}] ${artifact.status}: ${artifact.reason} actions=${artifact.actionCount} modelCalls=${artifact.modelCallCount}\n`);
+          stdout.write(`[${artifact.sequence}] ${artifact.status}: ${artifact.reason} actions=${artifact.actionCount} modelCalls=${artifact.modelCallCount} tokens=${artifact.usage?.totalTokens ?? 0}\n`);
         } catch (error) { stdout.write(`case error: ${error instanceof Error ? error.message : String(error)}\n`); }
         continue;
       }
@@ -59,7 +61,7 @@ export async function runRepl(): Promise<void> {
         const testCase = await caseCompiler.compile(line);
         stdout.write(`running case: ${testCase.name} mode=${testCase.completion.mode} expected=${testCase.timing.expectedMs}ms timeout=${testCase.timing.timeoutMs}ms\n`);
         const artifact = await session.runCase(testCase);
-        stdout.write(`[${artifact.sequence}] ${artifact.status}: ${artifact.reason} actions=${artifact.actionCount} modelCalls=${artifact.modelCallCount}\n`);
+        stdout.write(`[${artifact.sequence}] ${artifact.status}: ${artifact.reason} actions=${artifact.actionCount} modelCalls=${artifact.modelCallCount} tokens=${artifact.usage?.totalTokens ?? 0}\n`);
       } catch (error) {
         stdout.write(`session error: ${error instanceof Error ? error.message : String(error)}\n`);
       }

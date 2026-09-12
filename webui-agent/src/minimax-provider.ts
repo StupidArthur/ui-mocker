@@ -1,4 +1,4 @@
-import { createLLMClient, resolveLLMConfig, toChatFn, type ChatFn } from "./llm.js";
+import { createLLMClient, resolveLLMConfig, toChatFn, type ChatFn, type LLMUsageTracker } from "./llm.js";
 import type {
   CaseAgentProvider,
   CaseCompilerProvider,
@@ -109,23 +109,23 @@ export class MiniMaxCaseCompilerProvider implements CaseCompilerProvider {
   }
 }
 
-export function createMiniMaxProviders(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): { thinker: ThinkProvider; judge: JudgeProvider } {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+export function createMiniMaxProviders(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): { thinker: ThinkProvider; judge: JudgeProvider } {
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
   return { thinker: new MiniMaxThinkProvider(chat), judge: new MiniMaxJudgeProvider(chat) };
 }
 
-export function createMiniMaxCaseAgent(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseAgentProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+export function createMiniMaxCaseAgent(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseAgentProvider {
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
   return new MiniMaxCaseAgentProvider(chat);
 }
 
-export function createMiniMaxCaseCompiler(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseCompilerProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+export function createMiniMaxCaseCompiler(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseCompilerProvider {
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
   return new MiniMaxCaseCompilerProvider(chat);
 }
 
-export function createMiniMaxCaseVerifier(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseVerifierProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+export function createMiniMaxCaseVerifier(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseVerifierProvider {
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
   return new MiniMaxCaseVerifierProvider(chat);
 }
 
