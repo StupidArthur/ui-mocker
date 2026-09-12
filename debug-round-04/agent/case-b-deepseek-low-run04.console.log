@@ -1,0 +1,6 @@
+WebUI step agent connected. session=ds-low-trial-4
+Artifact: /Users/arthur/code/ui-mocker/debug-round-04/agent/case-b-deepseek-low-run04.jsonl
+Type /help for commands.
+> running case: Data-Algorithm Studio 冒烟业务链路（无上传，数据集已预置）
+[2] passed: Snapshot shows the project workspace with the lineage tree containing a '描述性统计' child node under the dataset root, and the algorithm result panel lists '描述性统计' with status '已通过'. actions=10 modelCalls=12 tokens=72807
+> 

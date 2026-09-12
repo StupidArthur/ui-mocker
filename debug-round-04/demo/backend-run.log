@@ -107,3 +107,35 @@ INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
 INFO:     Finished server process [62350]
+INFO:     Started server process [64063]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62962 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62964 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63021 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63025 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63028 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63037 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63038 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63044 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63043 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63050 - "POST /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63059 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63060 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63061 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63062 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63068 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63073 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63074 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63072 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63077 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/nodes/2b8cf6b4b0f14fcf900d08f4cd45444a/preview?rows=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63081 - "POST /api/projects/5611a267e08048b8b59fc97379e9d2ae/nodes/2b8cf6b4b0f14fcf900d08f4cd45444a/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63084 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63087 - "POST /api/projects/5611a267e08048b8b59fc97379e9d2ae/runs/a5dd7a459e0b40fc8cd1fcbb6e12d3ba/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63092 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63093 - "GET /api/projects/5611a267e08048b8b59fc97379e9d2ae/runs HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [64063]
