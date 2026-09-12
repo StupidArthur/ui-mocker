@@ -130,6 +130,10 @@ MCP 版本固定在 `src/mcp-adapter.ts` 的 `CHROME_DEVTOOLS_MCP_VERSION`，不
 | 变量 | 作用 | 默认值 |
 | --- | --- | --- |
 | `MINIMAX_API_KEY` | 覆盖内置临时 MiniMax Key | 内置测试 Key |
+| `LLM_API_KEY` | 通用 LLM Key，优先于 `MINIMAX_API_KEY`/`OPENAI_API_KEY` | 无 |
+| `LLM_PROTOCOL` | `chat_completions` 或 `responses`，切换协议 | `chat_completions` |
+| `LLM_BASE_URL` | 供应商 API 根路径（含 `/v1`） | 按协议默认 |
+| `LLM_MODEL` | 覆盖模型名 | `MiniMax-M3`（chat）/ `gpt-5`（responses） |
 | `WEBUI_HEADLESS=1` | 使用 headless Chrome | 可视 Chrome |
 | `WEBUI_ARTIFACT_PATH` | 指定 artifact 文件 | `artifacts/session-<id>.jsonl` |
 | `WEBUI_SESSION_ID` | 指定会话 ID | 自动生成 UUID |
@@ -184,7 +188,8 @@ src/case-runner.ts       多原子操作业务用例循环
 src/observation-scheduler.ts 自适应观察调度
 src/runner.ts            兼容的旧版单步骤执行
 src/mcp-adapter.ts       Chrome DevTools MCP 适配
-src/minimax-provider.ts  MiniMax Think/Judge
+src/llm.ts               协议无关的 LLM 客户端（Chat Completions / Responses）
+src/minimax-provider.ts  MiniMax Think/Judge/Compiler
 src/artifact-store.ts    JSONL 保存与脱敏
 src/types.ts             输入、阶段和 artifact 类型
 ```

@@ -1,3 +1,4 @@
+import { createLLMClient, resolveLLMConfig, toChatFn, type ChatFn } from "./llm.js";
 import type {
   CaseAgentProvider,
   CaseCompilerProvider,
@@ -11,36 +12,11 @@ import type {
   ThinkProvider,
 } from "./types.js";
 
-const API_URL = "https://api.minimaxi.com/v1/chat/completions";
+export type { ChatFn, ChatMessage } from "./llm.js";
+
+/** Artifact 中标记的模型名（仅取证标签；实际请求模型由 llm.ts 配置决定）。 */
 const MODEL = "MiniMax-M3";
 const DEFAULT_API_KEY = "sk-cp-aXV4X8TlWZeR3E1hpIaPtjEFnafrpbEi_IMlm6NhSY_0-CQHOV5WupxDkg4LV2JXfB3sO_AoGodPCkQ6irIC7PuIoxC29MVKqG70AYz_hQ1VIjNDgSpCvOo";
-
-export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
-export type ChatFn = (messages: ChatMessage[]) => Promise<string>;
-
-export class MiniMaxChatClient {
-  constructor(private readonly apiKey: string) {}
-
-  async chat(messages: ChatMessage[]): Promise<string> {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0,
-        max_tokens: 4096,
-        reasoning_split: true,
-        thinking: { type: "disabled" },
-      }),
-    });
-    if (!response.ok) throw new Error(`MiniMax request failed: HTTP ${response.status} ${await response.text()}`);
-    const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new Error("MiniMax returned no assistant content.");
-    return content;
-  }
-}
 
 export class MiniMaxThinkProvider implements ThinkProvider {
   constructor(private readonly chat: ChatFn) {}
@@ -116,19 +92,18 @@ export class MiniMaxCaseCompilerProvider implements CaseCompilerProvider {
 }
 
 export function createMiniMaxProviders(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): { thinker: ThinkProvider; judge: JudgeProvider } {
-  const client = new MiniMaxChatClient(apiKey);
-  const chat = client.chat.bind(client);
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
   return { thinker: new MiniMaxThinkProvider(chat), judge: new MiniMaxJudgeProvider(chat) };
 }
 
 export function createMiniMaxCaseAgent(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseAgentProvider {
-  const client = new MiniMaxChatClient(apiKey);
-  return new MiniMaxCaseAgentProvider(client.chat.bind(client));
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+  return new MiniMaxCaseAgentProvider(chat);
 }
 
 export function createMiniMaxCaseCompiler(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseCompilerProvider {
-  const client = new MiniMaxChatClient(apiKey);
-  return new MiniMaxCaseCompilerProvider(client.chat.bind(client));
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+  return new MiniMaxCaseCompilerProvider(chat);
 }
 
 const THINK_SYSTEM_PROMPT = `You operate one Web UI test step using discovered MCP tools.
