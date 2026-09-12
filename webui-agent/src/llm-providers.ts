@@ -11,18 +11,17 @@ import type {
   JudgeDecision,
   JudgeProvider,
   OperationDecision,
+  TestCaseDefinition,
   ThinkContext,
   ThinkProvider,
 } from "./types.js";
 
 export type { ChatFn, ChatMessage } from "./llm.js";
 
-/** Artifact 中标记的模型名（仅取证标签；实际请求模型由 llm.ts 配置决定）。 */
-const MODEL = "MiniMax-M3";
-const DEFAULT_API_KEY = "sk-cp-aXV4X8TlWZeR3E1hpIaPtjEFnafrpbEi_IMlm6NhSY_0-CQHOV5WupxDkg4LV2JXfB3sO_AoGodPCkQ6irIC7PuIoxC29MVKqG70AYz_hQ1VIjNDgSpCvOo";
+/** 供应商无关的 Provider 层：同一套 prompt + JSON 校验，底座是 llm.ts 的 LLMClient。 */
 
-export class MiniMaxThinkProvider implements ThinkProvider {
-  constructor(private readonly chat: ChatFn) {}
+export class LLMThinkProvider implements ThinkProvider {
+  constructor(private readonly chat: ChatFn, private readonly model = "unknown") {}
 
   async think(context: ThinkContext): Promise<OperationDecision> {
     const response = await this.chat([
@@ -31,12 +30,12 @@ export class MiniMaxThinkProvider implements ThinkProvider {
     ]);
     const parsed = parseJson<OperationDecision>(response);
     validateThinkDecision(parsed, context);
-    return { ...parsed, raw: { model: MODEL, response } };
+    return { ...parsed, raw: { model: this.model, response } };
   }
 }
 
-export class MiniMaxJudgeProvider implements JudgeProvider {
-  constructor(private readonly chat: ChatFn) {}
+export class LLMJudgeProvider implements JudgeProvider {
+  constructor(private readonly chat: ChatFn, private readonly model = "unknown") {}
 
   async judge(context: JudgeContext): Promise<JudgeDecision> {
     const response = await this.chat([
@@ -44,14 +43,14 @@ export class MiniMaxJudgeProvider implements JudgeProvider {
       { role: "user", content: JSON.stringify({ step: context.input.step, expected: context.input.config?.expected, operationSucceeded: context.operationSucceeded, waitTimedOut: context.waitTimedOut, phases: context.phases }) },
     ]);
     const parsed = parseJson<JudgeDecision>(response);
-    if (!(["passed", "failed", "blocked"] as const).includes(parsed.status)) throw new Error("MiniMax judge returned an invalid status.");
-    if (typeof parsed.reason !== "string" || !parsed.reason) throw new Error("MiniMax judge returned no reason.");
-    return { ...parsed, raw: { model: MODEL, response } };
+    if (!(["passed", "failed", "blocked"] as const).includes(parsed.status)) throw new Error("LLM judge returned an invalid status.");
+    if (typeof parsed.reason !== "string" || !parsed.reason) throw new Error("LLM judge returned no reason.");
+    return { ...parsed, raw: { model: this.model, response } };
   }
 }
 
-export class MiniMaxCaseAgentProvider implements CaseAgentProvider {
-  constructor(private readonly chat: ChatFn) {}
+export class LLMCaseAgentProvider implements CaseAgentProvider {
+  constructor(private readonly chat: ChatFn, private readonly model = "unknown") {}
 
   async decide(context: CaseModelContext): Promise<CaseDecision> {
     const prompt = context.testCase.completion.mode === "state_reached" ? CASE_DECIDE_STATE_PROMPT : CASE_DECIDE_PROMPT;
@@ -60,18 +59,18 @@ export class MiniMaxCaseAgentProvider implements CaseAgentProvider {
       { role: "user", content: JSON.stringify(compactCaseContext(context)) },
     ]);
     const decision = parseJson<CaseDecision>(response);
-    if (!(["operation", "observe", "passed", "failed", "blocked"] as const).includes(decision.kind)) throw new Error("MiniMax case decision returned an invalid kind.");
-    if (!decision.reason) throw new Error("MiniMax case decision returned no reason.");
+    if (!(["operation", "observe", "passed", "failed", "blocked"] as const).includes(decision.kind)) throw new Error("LLM case decision returned an invalid kind.");
+    if (!decision.reason) throw new Error("LLM case decision returned no reason.");
     if (decision.kind === "operation") {
-      if (!decision.operation) throw new Error("MiniMax case decision returned no operation.");
-      if (!context.capabilities.some((tool) => tool.name === decision.operation?.toolName)) throw new Error(`MiniMax selected an unavailable tool: ${decision.operation.toolName}`);
+      if (!decision.operation) throw new Error("LLM case decision returned no operation.");
+      if (!context.capabilities.some((tool) => tool.name === decision.operation?.toolName)) throw new Error(`LLM selected an unavailable tool: ${decision.operation.toolName}`);
     }
-    return { ...decision, raw: { model: MODEL, response } };
+    return { ...decision, raw: { model: this.model, response } };
   }
 }
 
-export class MiniMaxCaseVerifierProvider implements CaseVerifierProvider {
-  constructor(private readonly chat: ChatFn) {}
+export class LLMCaseVerifierProvider implements CaseVerifierProvider {
+  constructor(private readonly chat: ChatFn, private readonly model = "unknown") {}
 
   async verify(context: CaseVerificationContext): Promise<CaseVerification> {
     const response = await this.chat([
@@ -79,55 +78,60 @@ export class MiniMaxCaseVerifierProvider implements CaseVerifierProvider {
       { role: "user", content: JSON.stringify({ completion: context.testCase.completion, currentPage: compactBrowserEvidence(context.current.raw), currentError: context.current.error }) },
     ]);
     const result = parseJson<CaseVerification>(response);
-    if (typeof result.passed !== "boolean") throw new Error("MiniMax verifier returned an invalid passed field.");
-    if (typeof result.reason !== "string" || !result.reason) throw new Error("MiniMax verifier returned no reason.");
-    return { ...result, raw: { model: MODEL, response } };
+    if (typeof result.passed !== "boolean") throw new Error("LLM verifier returned an invalid passed field.");
+    if (typeof result.reason !== "string" || !result.reason) throw new Error("LLM verifier returned no reason.");
+    return { ...result, raw: { model: this.model, response } };
   }
 }
 
-export class MiniMaxCaseCompilerProvider implements CaseCompilerProvider {
-  constructor(private readonly chat: ChatFn) {}
+export class LLMCaseCompilerProvider implements CaseCompilerProvider {
+  constructor(private readonly chat: ChatFn, private readonly model = "unknown") {}
 
-  async compile(description: string): Promise<import("./types.js").TestCaseDefinition> {
+  async compile(description: string): Promise<TestCaseDefinition> {
     const response = await this.chat([
       { role: "system", content: CASE_COMPILE_PROMPT },
       { role: "user", content: description },
     ]);
-    const result = parseJson<import("./types.js").TestCaseDefinition>(response);
+    const result = parseJson<TestCaseDefinition>(response);
     if (!result.name) result.name = description.slice(0, 40);
     result.description = description;
-    if (!(["operation_succeeded", "state_reached"] as const).includes(result.completion?.mode)) throw new Error("MiniMax case compiler returned an invalid completion mode.");
-    if (!Array.isArray(result.completion.success) || result.completion.success.length === 0) throw new Error("MiniMax case compiler returned no success condition.");
+    if (!(["operation_succeeded", "state_reached"] as const).includes(result.completion?.mode)) throw new Error("LLM case compiler returned an invalid completion mode.");
+    if (!Array.isArray(result.completion.success) || result.completion.success.length === 0) throw new Error("LLM case compiler returned no success condition.");
     if (!Array.isArray(result.completion.failure)) result.completion.failure = [];
-    if (!(result.timing?.expectedMs > 0) || !(result.timing?.timeoutMs >= result.timing.expectedMs)) throw new Error("MiniMax case compiler returned invalid timing.");
+    if (!(result.timing?.expectedMs > 0) || !(result.timing?.timeoutMs >= result.timing.expectedMs)) throw new Error("LLM case compiler returned invalid timing.");
     result.limits = { maxActions: result.limits?.maxActions ?? 12, maxNoProgress: result.limits?.maxNoProgress ?? 4 };
     if (result.completion.mode === "operation_succeeded" && (!Array.isArray(result.requiredOperations) || result.requiredOperations.length === 0)) throw new Error("Operation-only case requires requiredOperations.");
     if (result.requiredOperations) {
       const ids = result.requiredOperations.map((item) => item.id);
-      if (ids.some((id) => !id) || new Set(ids).size !== ids.length) throw new Error("MiniMax case compiler returned invalid operation IDs.");
+      if (ids.some((id) => !id) || new Set(ids).size !== ids.length) throw new Error("LLM case compiler returned invalid operation IDs.");
     }
     return result;
   }
 }
 
-export function createMiniMaxProviders(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): { thinker: ThinkProvider; judge: JudgeProvider } {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
-  return { thinker: new MiniMaxThinkProvider(chat), judge: new MiniMaxJudgeProvider(chat) };
+function resolveChat(apiKey?: string, tracker?: LLMUsageTracker): { chat: ChatFn; model: string } {
+  const config = resolveLLMConfig(apiKey);
+  return { chat: toChatFn(createLLMClient(config), tracker), model: config.model ?? "unknown" };
 }
 
-export function createMiniMaxCaseAgent(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseAgentProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
-  return new MiniMaxCaseAgentProvider(chat);
+export function createLLMProviders(apiKey?: string, tracker?: LLMUsageTracker): { thinker: ThinkProvider; judge: JudgeProvider } {
+  const { chat, model } = resolveChat(apiKey, tracker);
+  return { thinker: new LLMThinkProvider(chat, model), judge: new LLMJudgeProvider(chat, model) };
 }
 
-export function createMiniMaxCaseCompiler(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseCompilerProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
-  return new MiniMaxCaseCompilerProvider(chat);
+export function createLLMCaseAgent(apiKey?: string, tracker?: LLMUsageTracker): CaseAgentProvider {
+  const { chat, model } = resolveChat(apiKey, tracker);
+  return new LLMCaseAgentProvider(chat, model);
 }
 
-export function createMiniMaxCaseVerifier(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY, tracker?: LLMUsageTracker): CaseVerifierProvider {
-  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)), tracker);
-  return new MiniMaxCaseVerifierProvider(chat);
+export function createLLMCaseCompiler(apiKey?: string, tracker?: LLMUsageTracker): CaseCompilerProvider {
+  const { chat, model } = resolveChat(apiKey, tracker);
+  return new LLMCaseCompilerProvider(chat, model);
+}
+
+export function createLLMCaseVerifier(apiKey?: string, tracker?: LLMUsageTracker): CaseVerifierProvider {
+  const { chat, model } = resolveChat(apiKey, tracker);
+  return new LLMCaseVerifierProvider(chat, model);
 }
 
 const THINK_SYSTEM_PROMPT = `You operate one Web UI test step using discovered MCP tools.
@@ -164,6 +168,7 @@ Decision priority:
 4. Use observe only when no action can be taken and the page is expected to change asynchronously.
 5. After a successful action, a control disappearing usually indicates a state transition. Do NOT wait for that old control to reappear. Inspect the new status/result/content instead.
 6. If the previous observation produced no page change, do NOT repeat the same observe. Re-evaluate success or choose another action.
+7. An open modal/dialog can hide the page that proves success. If nothing further is needed inside it, close it (use its close/cancel control) and inspect the revealed page before concluding.
 
 Never search for a UID that no longer exists in CURRENT page. CURRENT page is authoritative; previous expectations are not.
 Snapshot notation uid=25_3 means the MCP argument value is "25_3", never "uid=25_3".
@@ -207,12 +212,12 @@ function compactBrowserEvidence(value: unknown): unknown {
 }
 
 function validateThinkDecision(decision: OperationDecision, context: ThinkContext): void {
-  if (!(["operation", "none", "blocked"] as const).includes(decision.kind)) throw new Error("MiniMax think returned an invalid kind.");
-  if (typeof decision.reason !== "string" || !decision.reason) throw new Error("MiniMax think returned no reason.");
+  if (!(["operation", "none", "blocked"] as const).includes(decision.kind)) throw new Error("LLM think returned an invalid kind.");
+  if (typeof decision.reason !== "string" || !decision.reason) throw new Error("LLM think returned no reason.");
   if (decision.kind !== "operation") return;
-  if (!decision.operation || typeof decision.operation.toolName !== "string") throw new Error("MiniMax think returned no operation.");
-  if (!context.capabilities.some((tool) => tool.name === decision.operation?.toolName)) throw new Error(`MiniMax selected an unavailable tool: ${decision.operation.toolName}`);
-  if (decision.operation.arguments !== undefined && (typeof decision.operation.arguments !== "object" || Array.isArray(decision.operation.arguments))) throw new Error("MiniMax operation arguments must be an object.");
+  if (!decision.operation || typeof decision.operation.toolName !== "string") throw new Error("LLM think returned no operation.");
+  if (!context.capabilities.some((tool) => tool.name === decision.operation?.toolName)) throw new Error(`LLM selected an unavailable tool: ${decision.operation.toolName}`);
+  if (decision.operation.arguments !== undefined && (typeof decision.operation.arguments !== "object" || Array.isArray(decision.operation.arguments))) throw new Error("LLM operation arguments must be an object.");
 }
 
 function parseJson<T>(text: string): T {
@@ -228,7 +233,7 @@ function parseJson<T>(text: string): T {
     if (first) {
       try { return JSON.parse(first) as T; } catch { /* report below */ }
     }
-    throw new Error(`MiniMax returned invalid JSON: ${cleaned.slice(0, 300)}`);
+    throw new Error(`LLM returned invalid JSON: ${cleaned.slice(0, 300)}`);
   }
 }
 

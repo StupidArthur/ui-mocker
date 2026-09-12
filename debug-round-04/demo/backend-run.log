@@ -29,3 +29,81 @@ INFO:     127.0.0.1:62412 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/
 INFO:     127.0.0.1:62446 - "POST /api/auth/login HTTP/1.1" 200 OK
 INFO:     127.0.0.1:62448 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
 INFO:     127.0.0.1:62450 - "GET /api/projects/8d4c6c2a1b1d42538599a0399ced967c/runs HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [58581]
+INFO:     Started server process [59694]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62473 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62515 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62518 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62521 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62527 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62528 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62534 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62533 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62538 - "POST /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62547 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62549 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62550 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62561 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62562 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62565 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/nodes/31aa00edec704bb993ba070edd39e991/preview?rows=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62569 - "POST /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/nodes/31aa00edec704bb993ba070edd39e991/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62573 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62576 - "POST /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/runs/7c4ac2bcb11649b69f0a78ff3f5a3dda/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62582 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62581 - "GET /api/projects/32bcbcfd3bb04e298aa1cfa89d61e13e/nodes HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59694]
+INFO:     Started server process [61016]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62697 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62732 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62735 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62738 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62745 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62744 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62750 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62751 - "GET /api/projects?scope=mine HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62755 - "POST /api/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62764 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62766 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62767 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62770 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62779 - "GET /api/algorithms HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62778 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62782 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/nodes/015779de00ea4778a8eb56a038901008/preview?rows=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62785 - "POST /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/nodes/015779de00ea4778a8eb56a038901008/run HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62788 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62791 - "POST /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/runs/75ff9b7221e44b96b46dfd8766534aa5/review HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62796 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/nodes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62797 - "GET /api/projects/6b86fae4a5f54ec9b2ad1700829b0f75/runs HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [61016]
+INFO:     Started server process [62350]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62877 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62879 - "POST /api/datasets HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [62350]

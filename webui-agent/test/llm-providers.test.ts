@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { MiniMaxCaseAgentProvider, MiniMaxCaseCompilerProvider, MiniMaxJudgeProvider, MiniMaxThinkProvider } from "../src/minimax-provider.js";
+import { LLMCaseAgentProvider, LLMCaseCompilerProvider, LLMJudgeProvider, LLMThinkProvider } from "../src/llm-providers.js";
 
-describe("MiniMax providers", () => {
+describe("LLM providers", () => {
   it("turns a model decision into exactly one discovered operation", async () => {
-    const provider = new MiniMaxThinkProvider(async () => JSON.stringify({ kind: "operation", reason: "button found", operation: { toolName: "click", arguments: { uid: "7" } } }));
+    const provider = new LLMThinkProvider(async () => JSON.stringify({ kind: "operation", reason: "button found", operation: { toolName: "click", arguments: { uid: "7" } } }));
     const result = await provider.think({
       input: { step: "点击登录" },
       before: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: { text: "登录" }, toolCalls: [] },
@@ -13,19 +13,19 @@ describe("MiniMax providers", () => {
   });
 
   it("rejects an invented MCP tool", async () => {
-    const provider = new MiniMaxThinkProvider(async () => JSON.stringify({ kind: "operation", reason: "x", operation: { toolName: "invented", arguments: {} } }));
+    const provider = new LLMThinkProvider(async () => JSON.stringify({ kind: "operation", reason: "x", operation: { toolName: "invented", arguments: {} } }));
     await expect(provider.think({ input: { step: "x" }, before: { phase: "takeShotBefore", startedAt: "", finishedAt: "", toolCalls: [] }, capabilities: [{ name: "click" }] })).rejects.toThrow("unavailable tool");
   });
 
   it("parses a fenced judge response", async () => {
-    const provider = new MiniMaxJudgeProvider(async () => '```json\n{"status":"passed","reason":"目标已出现"}\n```');
+    const provider = new LLMJudgeProvider(async () => '```json\n{"status":"passed","reason":"目标已出现"}\n```');
     const result = await provider.judge({ input: { step: "检查目标" }, phases: [], operationSucceeded: true, waitTimedOut: false });
     expect(result.status).toBe("passed");
   });
 
   it("uses one case-model decision for a terminal result", async () => {
     let calls = 0;
-    const provider = new MiniMaxCaseAgentProvider(async () => { calls += 1; return '{"kind":"passed","reason":"首页已显示"}'; });
+    const provider = new LLMCaseAgentProvider(async () => { calls += 1; return '{"kind":"passed","reason":"首页已显示"}'; });
     const result = await provider.decide({
       testCase: { name: "登录", description: "登录", completion: { mode: "state_reached", success: ["首页"], failure: ["错误"] }, timing: { expectedMs: 3000, timeoutMs: 15000 } },
       current: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: { text: "首页" }, toolCalls: [] },
@@ -36,7 +36,7 @@ describe("MiniMax providers", () => {
   });
 
   it("extracts case JSON surrounded by model commentary", async () => {
-    const provider = new MiniMaxCaseAgentProvider(async () => '分析如下：\n{"kind":"observe","reason":"等待训练状态","feedbackMode":"long"}\n以上。');
+    const provider = new LLMCaseAgentProvider(async () => '分析如下：\n{"kind":"observe","reason":"等待训练状态","feedbackMode":"long"}\n以上。');
     const result = await provider.decide({
       testCase: { name: "训练", description: "训练", completion: { mode: "state_reached", success: ["完成"], failure: ["失败"] }, timing: { expectedMs: 120000, timeoutMs: 180000 } },
       current: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: {}, toolCalls: [] }, capabilities: [], history: [], actionCount: 0, elapsedMs: 0, remainingMs: 180000, completedOperationIds: [], pendingOperations: [],
@@ -45,7 +45,7 @@ describe("MiniMax providers", () => {
   });
 
   it("uses the first complete JSON object when the model concatenates several", async () => {
-    const provider = new MiniMaxCaseAgentProvider(async () => '{"kind":"operation","reason":"第一步","operation":{"toolName":"fill","arguments":{"uid":"1","value":"admin"}}}\n{"kind":"operation","reason":"第二步","operation":{"toolName":"fill","arguments":{"uid":"2","value":"admin123"}}}');
+    const provider = new LLMCaseAgentProvider(async () => '{"kind":"operation","reason":"第一步","operation":{"toolName":"fill","arguments":{"uid":"1","value":"admin"}}}\n{"kind":"operation","reason":"第二步","operation":{"toolName":"fill","arguments":{"uid":"2","value":"admin123"}}}');
     const result = await provider.decide({
       testCase: { name: "登录", description: "登录", completion: { mode: "operation_succeeded", success: ["完成"], failure: [] }, timing: { expectedMs: 3000, timeoutMs: 15000 } },
       current: { phase: "takeShotBefore", startedAt: "", finishedAt: "", raw: {}, toolCalls: [] },
@@ -56,7 +56,7 @@ describe("MiniMax providers", () => {
   });
 
   it("compiles an operation-only instruction with operation_succeeded mode", async () => {
-    const provider = new MiniMaxCaseCompilerProvider(async () => JSON.stringify({
+    const provider = new LLMCaseCompilerProvider(async () => JSON.stringify({
       name: "点击专家模式", description: "ignored",
       requiredOperations: [{ id: "click_expert_mode", description: "点击专家模式" }],
       completion: { mode: "operation_succeeded", success: ["点击成功"], failure: [] },

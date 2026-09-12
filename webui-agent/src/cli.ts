@@ -6,16 +6,16 @@ import { parse as parseYaml } from "yaml";
 import { ChromeDevtoolsMcpAdapter } from "./mcp-adapter.js";
 import { JsonlArtifactSink } from "./artifact-store.js";
 import { LLMUsageTracker } from "./llm.js";
-import { createMiniMaxCaseAgent, createMiniMaxCaseCompiler, createMiniMaxCaseVerifier, createMiniMaxProviders } from "./minimax-provider.js";
+import { createLLMCaseAgent, createLLMCaseCompiler, createLLMCaseVerifier, createLLMProviders } from "./llm-providers.js";
 import { Session } from "./session.js";
 import type { TestCaseDefinition } from "./types.js";
 
 export async function runRepl(): Promise<void> {
   const usageTracker = new LLMUsageTracker();
-  const { thinker, judge } = createMiniMaxProviders(undefined, usageTracker);
-  const caseAgent = createMiniMaxCaseAgent(undefined, usageTracker);
-  const caseCompiler = createMiniMaxCaseCompiler(undefined, usageTracker);
-  const caseVerifier = createMiniMaxCaseVerifier(undefined, usageTracker);
+  const { thinker, judge } = createLLMProviders(undefined, usageTracker);
+  const caseAgent = createLLMCaseAgent(undefined, usageTracker);
+  const caseCompiler = createLLMCaseCompiler(undefined, usageTracker);
+  const caseVerifier = createLLMCaseVerifier(undefined, usageTracker);
   const sessionId = process.env.WEBUI_SESSION_ID ?? randomUUID();
   const artifactPath = process.env.WEBUI_ARTIFACT_PATH ?? `artifacts/session-${sessionId}.jsonl`;
   const session = new Session({ adapter: new ChromeDevtoolsMcpAdapter(), thinker, judge, caseAgent, caseVerifier, usageTracker, sink: new JsonlArtifactSink(artifactPath), sessionId });

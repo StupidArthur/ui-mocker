@@ -62,17 +62,26 @@ def run_one(trial):
     cfg = f"{ROUND}/agent/trial-{trial:02d}.driver.json"
     with open(cfg, "w") as f:
         json.dump(driver_json, f)
+    # 每轮前清理上一轮可能残留的 agent/Chrome
+    sh("pkill -f 'tsx src/cli.ts'")
     started = time.time()
-    r = subprocess.run(
-        ["python3", f"{ROUND}/agent/run_agent.py", cfg],
-        capture_output=True, text=True, timeout=720, cwd=BASE,
-    )
+    try:
+        r = subprocess.run(
+            ["python3", f"{ROUND}/agent/run_agent.py", cfg],
+            capture_output=True, text=True, timeout=300, cwd=BASE,
+        )
+        out = (r.stdout or "") + (r.stderr or "")
+        hung = False
+    except subprocess.TimeoutExpired:
+        sh("pkill -f 'tsx src/cli.ts'")
+        out = ""
+        hung = True
     elapsed = int(time.time() - started)
-    out = (r.stdout or "") + (r.stderr or "")
     status = reason = "unknown"
+    if hung:
+        status, reason = "hung", "driver watchdog killed it after 300s"
     for line in out.splitlines():
         if line.startswith("[driver] result after"):
-            # [driver] result after 80s: [2] blocked: <reason>
             head, _, rest = line.partition(": ")
             seg = rest.split(":", 1)
             status = seg[0].split("] ", 1)[-1].strip() if len(seg) == 2 else "unknown"

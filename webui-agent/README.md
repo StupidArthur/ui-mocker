@@ -10,7 +10,7 @@
 
 - 进程级 MCP/Chrome 长期会话；
 - 交互式 REPL，可运行 YAML/JSON 业务测试用例；
-- MiniMax-M3 驱动 Think 和 Judge；
+- 协议无关的 LLM 客户端（Chat Completions / Responses，默认 DeepSeek `deepseek-flash`）驱动 Think/Judge/CaseAgent/Compiler/Verifier；
 - 每轮模型决策最多执行一个原子操作，一个用例可以包含多轮；
 - 短任务高频、长任务退避式的自适应观察；页面无变化时不重复调用模型；
 - 操作前、操作后瞬时状态、等待后稳定状态的完整取证；
@@ -18,7 +18,7 @@
 - JSONL artifact 持久化和敏感字段脱敏；
 - 独立 Chrome profile、项目内 npm cache、可选 headless；
 - 28 项单元测试，类型检查和构建均通过；
-- 真实可视 Chrome + MCP + MiniMax 登录用例端到端通过。
+- 真实可视 Chrome + MCP + LLM 登录用例端到端通过。
 
 真实验收使用 `examples/debug-login.html` 和 `examples/debug-login.case.yaml`：Agent 依次执行 `fill_form`、`click`，进入短期观察；页面在 800ms 后出现业务反馈，调度器检测到变化后再次调用模型，最终以 2 个业务操作、4 次模型决策判定 `passed`。Chrome/MCP 需要允许启动桌面进程；权限受限时导航会返回超时并正确记录为 `blocked`。
 
@@ -61,10 +61,10 @@ npm install
 npm run dev
 ```
 
-程序当前内置了项目提供的临时 MiniMax 测试 Key。可以用环境变量覆盖：
+程序不内置明文 Key，必须通过环境变量提供（默认走 DeepSeek official API）：
 
 ```powershell
-$env:MINIMAX_API_KEY = "你的 API key"
+$env:LLM_API_KEY = "你的 API key"
 npm run dev
 ```
 
@@ -91,7 +91,7 @@ REPL 命令：
 /exit         关闭 MCP/Chrome 并退出
 ```
 
-`/run` 用于具有明确结束条件和时间预算的正式用例。普通自然语言输入也统一进入 V2：MiniMax 会先将它编译为稳定的 Case Contract，并拆出带唯一 ID 的 `requiredOperations`。每次 MCP 工具成功后，程序登记本次完成的操作 ID；`operation_succeeded` 的全部 ID 完成时由程序直接判定通过，不再依赖模型记忆或额外页面变化。明确包含等待、检查、出现、跳转或业务结果时生成 `state_reached`，才允许进入观察。控制台会显示 mode、expected 和 timeout。
+`/run` 用于具有明确结束条件和时间预算的正式用例。普通自然语言输入也统一进入 V2：LLM 会先将它编译为稳定的 Case Contract，并拆出带唯一 ID 的 `requiredOperations`。每次 MCP 工具成功后，程序登记本次完成的操作 ID；`operation_succeeded` 的全部 ID 完成时由程序直接判定通过，不再依赖模型记忆或额外页面变化。明确包含等待、检查、出现、跳转或业务结果时生成 `state_reached`，才允许进入观察。控制台会显示 mode、expected 和 timeout。
 
 测试用例格式：
 
@@ -130,12 +130,11 @@ MCP 版本固定在 `src/mcp-adapter.ts` 的 `CHROME_DEVTOOLS_MCP_VERSION`，不
 
 | 变量 | 作用 | 默认值 |
 | --- | --- | --- |
-| `MINIMAX_API_KEY` | 覆盖内置临时 MiniMax Key | 内置测试 Key |
-| `LLM_API_KEY` | 通用 LLM Key，优先于 `MINIMAX_API_KEY`/`OPENAI_API_KEY` | 无 |
+| `LLM_API_KEY` | LLM Key（也支持 `DEEPSEEK_API_KEY`/`OPENAI_API_KEY`） | 无（必填） |
 | `LLM_PROTOCOL` | `chat_completions` 或 `responses`，切换协议 | `chat_completions` |
 | `LLM_REASONING_EFFORT` | `high` 或 `low`，控制思考等级（chat 映射 `thinking.adaptive/disabled`，responses 映射 `reasoning.effort`） | `low` |
-| `LLM_BASE_URL` | 供应商 API 根路径（含 `/v1`） | 按协议默认 |
-| `LLM_MODEL` | 覆盖模型名 | `MiniMax-M3`（chat）/ `gpt-5`（responses） |
+| `LLM_BASE_URL` | 供应商 API 根路径（含 `/v1`） | `https://api.deepseek.com/v1`（chat）/ `https://api.openai.com/v1`（responses） |
+| `LLM_MODEL` | 覆盖模型名 | `deepseek-flash`（chat）/ `gpt-5`（responses） |
 | `WEBUI_HEADLESS=1` | 使用 headless Chrome | 可视 Chrome |
 | `WEBUI_ARTIFACT_PATH` | 指定 artifact 文件 | `artifacts/session-<id>.jsonl` |
 | `WEBUI_SESSION_ID` | 指定会话 ID | 自动生成 UUID |
@@ -193,7 +192,7 @@ src/observation-scheduler.ts 自适应观察调度
 src/runner.ts            兼容的旧版单步骤执行
 src/mcp-adapter.ts       Chrome DevTools MCP 适配
 src/llm.ts               协议无关的 LLM 客户端（Chat Completions / Responses）
-src/minimax-provider.ts  MiniMax Think/Judge/Compiler
+src/llm-providers.ts     供应商无关的 Think/Judge/CaseAgent/Compiler/Verifier
 src/artifact-store.ts    JSONL 保存与脱敏
 src/types.ts             输入、阶段和 artifact 类型
 ```
@@ -204,7 +203,7 @@ src/types.ts             输入、阶段和 artifact 类型
 - 长任务目前要求 Agent 进程和 Chrome 持续运行，尚未实现任务持久化恢复；
 - 尚未实现 Agent 主动向用户提问来消除歧义；
 - 尚未实现会话恢复，Agent 进程退出后不能继续旧 Chrome 状态；
-- MiniMax 输出采用 JSON 文本解析，尚未使用服务端强约束的 structured output；
+- LLM 输出采用 JSON 文本解析，尚未使用服务端强约束的 structured output；
 - 临时测试 Key 明文存在于原型代码，正式使用前必须移除并轮换；
 - 启动可视 Chrome 需要桌面进程权限；受限沙箱中可能出现导航超时。
 

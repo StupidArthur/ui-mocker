@@ -76,20 +76,22 @@ export interface LLMClient {
   chat(messages: ChatMessage[]): Promise<LLMChatResult>;
 }
 
-export const CHAT_COMPLETIONS_DEFAULT_BASE_URL = "https://api.minimaxi.com/v1";
+export const CHAT_COMPLETIONS_DEFAULT_BASE_URL = "https://api.deepseek.com/v1";
 export const RESPONSES_DEFAULT_BASE_URL = "https://api.openai.com/v1";
+export const DEFAULT_CHAT_MODEL = "deepseek-flash";
+export const DEFAULT_RESPONSES_MODEL = "gpt-5";
 
 function buildHeaders(config: LLMClientConfig): Record<string, string> {
   return { "content-type": "application/json", authorization: `Bearer ${config.apiKey}`, ...config.headers };
 }
 
-/** OpenAI Chat Completions 协议客户端（兼容 MiniMax / DeepSeek 等 OpenAI 兼容端点）。 */
+/** OpenAI Chat Completions 协议客户端（兼容 DeepSeek / OpenAI 等 OpenAI 兼容端点）。 */
 export class ChatCompletionsClient implements LLMClient {
   readonly protocol = "chat_completions" as const;
   readonly model: string;
 
   constructor(private readonly config: LLMClientConfig) {
-    this.model = config.model ?? "MiniMax-M3";
+    this.model = config.model ?? DEFAULT_CHAT_MODEL;
   }
 
   get baseUrl(): string {
@@ -129,7 +131,7 @@ export class ResponsesClient implements LLMClient {
   readonly model: string;
 
   constructor(private readonly config: LLMClientConfig) {
-    this.model = config.model ?? "gpt-5";
+    this.model = config.model ?? DEFAULT_RESPONSES_MODEL;
   }
 
   get baseUrl(): string {
@@ -201,18 +203,22 @@ export function createLLMClient(config: LLMClientConfig): LLMClient {
 /** 环境变量解析后的客户端配置。
 
   优先级：显式环境变量（LLM_PROTOCOL / LLM_BASE_URL / LLM_MODEL / LLM_API_KEY）
-  高于调用方传入的 overrides，高于协议默认值。apiKey 必填（可来自环境变量）。
+  高于调用方传入的 overrides，高于协议默认值。
+  API key 解析顺序：LLM_API_KEY / DEEPSEEK_API_KEY / OPENAI_API_KEY，均无则用传入的 apiKey；
+  仍然为空时抛出明确错误（不内置任何明文 key）。
   LLM_REASONING_EFFORT=high|low 控制思考等级：
     chat_completions: high -> thinking.type=adaptive，low -> thinking.type=disabled
     responses:        high/low -> reasoning.effort
 */
-export function resolveLLMConfig(apiKey: string, overrides: Partial<LLMClientConfig> = {}): LLMClientConfig {
+export function resolveLLMConfig(apiKey?: string, overrides: Partial<LLMClientConfig> = {}): LLMClientConfig {
   const protocol = (process.env.LLM_PROTOCOL as LLMProtocol | undefined) ?? overrides.protocol ?? "chat_completions";
   const reasoningEffort = (process.env.LLM_REASONING_EFFORT ?? "").toLowerCase() as "" | "low" | "high";
+  const resolvedKey = process.env.LLM_API_KEY ?? process.env.DEEPSEEK_API_KEY ?? process.env.OPENAI_API_KEY ?? apiKey;
+  if (!resolvedKey) throw new Error("No LLM API key configured. Set LLM_API_KEY (or pass apiKey).");
   return {
     protocol,
-    apiKey: process.env.LLM_API_KEY ?? process.env.MINIMAX_API_KEY ?? process.env.OPENAI_API_KEY ?? apiKey,
-    model: process.env.LLM_MODEL ?? overrides.model ?? (protocol === "responses" ? "gpt-5" : "MiniMax-M3"),
+    apiKey: resolvedKey,
+    model: process.env.LLM_MODEL ?? overrides.model ?? (protocol === "responses" ? DEFAULT_RESPONSES_MODEL : DEFAULT_CHAT_MODEL),
     baseUrl: process.env.LLM_BASE_URL ?? overrides.baseUrl ?? (protocol === "responses" ? RESPONSES_DEFAULT_BASE_URL : CHAT_COMPLETIONS_DEFAULT_BASE_URL),
     temperature: overrides.temperature,
     maxTokens: overrides.maxTokens,

@@ -9,7 +9,7 @@ import {
   ThinkProvider,
 } from "./types.js";
 
-/** Deterministic provider reserved for unit tests; the product CLI uses MiniMax. */
+/** Deterministic provider reserved for unit tests; the product CLI uses the LLM providers (llm-providers.ts). */
 export class RuleBasedThinkProvider implements ThinkProvider {
   async think(context: ThinkContext): Promise<OperationDecision> {
     const configured = context.input.config?.operation;
