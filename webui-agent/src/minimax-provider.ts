@@ -54,8 +54,9 @@ export class MiniMaxCaseAgentProvider implements CaseAgentProvider {
   constructor(private readonly chat: ChatFn) {}
 
   async decide(context: CaseModelContext): Promise<CaseDecision> {
+    const prompt = context.testCase.completion.mode === "state_reached" ? CASE_DECIDE_STATE_PROMPT : CASE_DECIDE_PROMPT;
     const response = await this.chat([
-      { role: "system", content: CASE_DECIDE_PROMPT },
+      { role: "system", content: prompt },
       { role: "user", content: JSON.stringify(compactCaseContext(context)) },
     ]);
     const decision = parseJson<CaseDecision>(response);
@@ -149,6 +150,26 @@ Return JSON only using one shape:
 {"kind":"blocked","reason":"..."}
 First obey completion.mode and the structured pendingOperations list. The currentPage field always contains the latest fresh DOM snapshot. When choosing an operation, completes must contain the exact IDs from pendingOperations that this single MCP call will complete; one batch tool may complete multiple IDs. Never repeat IDs in completedOperationIds. For operation_succeeded, every operation must complete at least one pending ID: execute pending operations until none remain; do not wait for or invent an additional UI state, and NEVER return observe. For state_reached, completes is ignored entirely and requiredOperations in the testCase are only task hints: perform whatever actions the page actually needs, and reach the final business state; a prerequisite/intermediate action (opening a dialog, selecting a file, filling a form, closing a dialog, navigating) is a normal action. Snapshot notation uid=25_3 means the MCP argument value is "25_3", never "uid=25_3". For state_reached, check completion.success/failure and observe only while the requested final state is pending; when an executable action is still needed to make progress, perform it instead of observing. Return passed only when the CURRENT page clearly shows the final success state. Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure. Do not observe merely to confirm a synchronous action again. Never invent tools, schema fields, or operation IDs. Use feedbackMode=long only for genuinely long jobs, considering expectedMs.`;
 
+const CASE_DECIDE_STATE_PROMPT = `You are executing a state-reached Web UI test case. Return JSON only using one shape:
+{"kind":"operation","reason":"...","operation":{"toolName":"exact discovered MCP tool","arguments":{}}}
+{"kind":"observe","reason":"...","feedbackMode":"short|long"}
+{"kind":"passed","reason":"explicit success evidence"}
+{"kind":"failed","reason":"explicit failure evidence"}
+{"kind":"blocked","reason":"..."}
+
+Decision priority:
+1. First compare CURRENT page (currentPage) with completion.success and completion.failure.
+2. If CURRENT page proves success, return passed immediately.
+3. If an action is required, perform exactly one action.
+4. Use observe only when no action can be taken and the page is expected to change asynchronously.
+5. After a successful action, a control disappearing usually indicates a state transition. Do NOT wait for that old control to reappear. Inspect the new status/result/content instead.
+6. If the previous observation produced no page change, do NOT repeat the same observe. Re-evaluate success or choose another action.
+
+Never search for a UID that no longer exists in CURRENT page. CURRENT page is authoritative; previous expectations are not.
+Snapshot notation uid=25_3 means the MCP argument value is "25_3", never "uid=25_3".
+completes / requiredOperations are task hints only and are ignored for state_reached.
+Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure.`;
+
 const CASE_VERIFY_PROMPT = `You verify the final target state of one Web UI test case using ONLY the current page snapshot.
 Return JSON only: {"passed":true|false,"reason":"concise evidence-based reason"}.
 passed=true only when the CURRENT snapshot clearly proves the success state described by completion.success.
@@ -166,6 +187,8 @@ function compactCaseContext(context: CaseModelContext): Record<string, unknown> 
     currentError: context.current.error,
     tools: context.capabilities,
     recentHistory: context.history,
+    lastTransition: context.lastTransition,
+    consecutiveNoChangeObservations: context.consecutiveNoChangeObservations,
     actionCount: context.actionCount,
     elapsedMs: context.elapsedMs,
     remainingMs: context.remainingMs,

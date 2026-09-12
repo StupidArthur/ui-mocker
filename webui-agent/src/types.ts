@@ -229,6 +229,21 @@ export interface CaseModelContext {
   remainingMs: number;
   completedOperationIds: string[];
   pendingOperations: Array<{ id: string; description: string }>;
+  /** 结构化“上一跳发生了什么”，比自然语言 history 更省模型推理。 */
+  lastTransition?: CaseLastTransition;
+  /** 连续未变化的观察次数。 */
+  consecutiveNoChangeObservations?: number;
+}
+
+export interface CaseLastTransition {
+  kind: "operation" | "observe";
+  toolName?: string;
+  /** operation 是否成功（无 MCP 错误）。 */
+  succeeded?: boolean;
+  /** operation 后页面指纹是否变化。 */
+  pageChanged?: boolean;
+  /** observe 期间页面是否变化。 */
+  changed?: boolean;
 }
 
 export interface CaseEvaluationContext extends CaseModelContext {
@@ -284,6 +299,15 @@ export interface TestCaseArtifact {
   completedOperationIds: string[];
   /** 本用例累计的 LLM token 消耗（如有配置 tracker）。 */
   usage?: LLMUsageTotals;
+  /** state_reached + verifier 时的实验指标。 */
+  metrics?: {
+    /** verifier 首次判定成功所在的 iteration 序号（terminalLag 用它计算）。 */
+    firstSuccessIteration?: number;
+    /** 同一快照连续 observe 的最大次数。 */
+    sameSnapshotObserveCount?: number;
+    /** passed 由哪条路径捕获。 */
+    rescue?: "agent" | "observe" | "final";
+  };
   iterations: CaseIteration[];
 }
 

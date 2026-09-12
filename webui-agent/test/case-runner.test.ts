@@ -235,4 +235,49 @@ describe("TestCaseRunner", () => {
     );
     expect(result.status).toBe("passed");
   });
+
+  it("verifies before observing and captures a success that the agent missed", async () => {
+    const adapter = new CaseAdapter();
+    adapter.page = 9; // 业务已完成的页面指纹
+    const agent: CaseAgentProvider = { async decide() { return { kind: "observe", reason: "wait for approval button" }; } };
+    let schedulerCalls = 0;
+    const scheduler = { async waitForChange() { schedulerCalls += 1; return { status: "checkpoint" as const, observations: [] }; } };
+    const verifier: CaseVerifierProvider = { async verify({ current }) { return { passed: (current.raw as { page: number }).page === 9, reason: "workspace shows child node" }; } };
+    const result = await new TestCaseRunner(adapter, agent, scheduler, verifier).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["workspace shows child node"], failure: [] } },
+      { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] },
+    );
+    expect(result.status).toBe("passed");
+    expect(schedulerCalls).toBe(0);
+    expect(result.metrics?.rescue).toBe("observe");
+    expect(result.metrics?.firstSuccessIteration).toBe(1);
+  });
+
+  it("blocks repeated observation of the same unchanged snapshot after one correction", async () => {
+    const adapter = new CaseAdapter();
+    const agent: CaseAgentProvider = { async decide() { return { kind: "observe", reason: "wait again" }; } };
+    let schedulerCalls = 0;
+    const scheduler = { async waitForChange() { schedulerCalls += 1; return { status: "checkpoint" as const, observations: [{ phase: "takeShotSettled" as const, startedAt: "", finishedAt: "", raw: { page: 0 }, toolCalls: [] }] }; } };
+    const result = await new TestCaseRunner(adapter, agent, scheduler).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["done"], failure: [] } },
+      { sessionId: "s", sequence: 1, capabilities: [] },
+    );
+    expect(result.status).toBe("blocked");
+    expect(result.reason).toContain("Repeated observation");
+    expect(schedulerCalls).toBe(1);
+    expect(result.metrics?.sameSnapshotObserveCount).toBe(2);
+  });
+
+  it("rescues a final state on an abnormal exit before returning blocked", async () => {
+    const adapter = new CaseAdapter();
+    adapter.page = 9;
+    const agent: CaseAgentProvider = { async decide() { return { kind: "blocked", reason: "cannot continue" }; } };
+    const verifier: CaseVerifierProvider = { async verify({ current }) { return { passed: (current.raw as { page: number }).page === 9, reason: "actually done" }; } };
+    const result = await new TestCaseRunner(adapter, agent, undefined, verifier).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["done"], failure: [] } },
+      { sessionId: "s", sequence: 1, capabilities: [] },
+    );
+    expect(result.status).toBe("passed");
+    expect(result.metrics?.rescue).toBe("final");
+  });
 });
