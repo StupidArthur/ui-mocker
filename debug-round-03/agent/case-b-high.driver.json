@@ -1,0 +1,9 @@
+{
+  "session_id": "case-b-thinking-high",
+  "artifact": "/Users/arthur/code/ui-mocker/debug-round-03/agent/case-b-thinking-high.jsonl",
+  "console": "/Users/arthur/code/ui-mocker/debug-round-03/agent/case-b-thinking-high.console.log",
+  "commands": ["/run /Users/arthur/code/ui-mocker/debug-round-03/agent/case-b.yaml"],
+  "case_timeout": 780,
+  "mcp_log": "/Users/arthur/code/ui-mocker/debug-round-03/agent/mcp-stderr-high.log",
+  "env": {"LLM_REASONING_EFFORT": "high"}
+}

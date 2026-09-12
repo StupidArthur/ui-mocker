@@ -4,6 +4,7 @@ import {
   ResponsesClient,
   createLLMClient,
   extractResponsesText,
+  resolveLLMConfig,
   type ChatMessage,
 } from "../src/llm.js";
 
@@ -86,5 +87,31 @@ describe("createLLMClient", () => {
 
   it("rejects unknown protocols", () => {
     expect(() => createLLMClient({ protocol: "nope" as never, apiKey: "k" })).toThrow("Unsupported LLM protocol");
+  });
+});
+
+describe("resolveLLMConfig reasoning effort", () => {
+  const key = "LLM_REASONING_EFFORT";
+  afterEach(() => {
+    delete process.env[key];
+  });
+
+  it("maps high to adaptive thinking for chat_completions", () => {
+    process.env[key] = "high";
+    expect(resolveLLMConfig("k").extraBody).toEqual({ reasoning_split: true, thinking: { type: "adaptive" } });
+  });
+
+  it("maps low to disabled thinking for chat_completions", () => {
+    process.env[key] = "low";
+    expect(resolveLLMConfig("k").extraBody).toEqual({ reasoning_split: true, thinking: { type: "disabled" } });
+  });
+
+  it("maps effort to reasoning for responses", () => {
+    process.env[key] = "high";
+    expect(resolveLLMConfig("k", { protocol: "responses" }).extraBody).toEqual({ reasoning: { effort: "high" } });
+  });
+
+  it("defaults chat_completions to disabled thinking without the env var", () => {
+    expect(resolveLLMConfig("k").extraBody).toEqual({ reasoning_split: true, thinking: { type: "disabled" } });
   });
 });

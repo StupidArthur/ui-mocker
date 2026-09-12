@@ -154,9 +154,13 @@ export function createLLMClient(config: LLMClientConfig): LLMClient {
 
   优先级：显式环境变量（LLM_PROTOCOL / LLM_BASE_URL / LLM_MODEL / LLM_API_KEY）
   高于调用方传入的 overrides，高于协议默认值。apiKey 必填（可来自环境变量）。
+  LLM_REASONING_EFFORT=high|low 控制思考等级：
+    chat_completions: high -> thinking.type=adaptive，low -> thinking.type=disabled
+    responses:        high/low -> reasoning.effort
 */
 export function resolveLLMConfig(apiKey: string, overrides: Partial<LLMClientConfig> = {}): LLMClientConfig {
   const protocol = (process.env.LLM_PROTOCOL as LLMProtocol | undefined) ?? overrides.protocol ?? "chat_completions";
+  const reasoningEffort = (process.env.LLM_REASONING_EFFORT ?? "").toLowerCase() as "" | "low" | "high";
   return {
     protocol,
     apiKey: process.env.LLM_API_KEY ?? process.env.MINIMAX_API_KEY ?? process.env.OPENAI_API_KEY ?? apiKey,
@@ -164,9 +168,19 @@ export function resolveLLMConfig(apiKey: string, overrides: Partial<LLMClientCon
     baseUrl: process.env.LLM_BASE_URL ?? overrides.baseUrl ?? (protocol === "responses" ? RESPONSES_DEFAULT_BASE_URL : CHAT_COMPLETIONS_DEFAULT_BASE_URL),
     temperature: overrides.temperature,
     maxTokens: overrides.maxTokens,
-    extraBody: overrides.extraBody ?? (protocol === "chat_completions" ? { reasoning_split: true, thinking: { type: "disabled" } } : undefined),
+    extraBody: overrides.extraBody ?? buildDefaultExtraBody(protocol, reasoningEffort),
     headers: overrides.headers,
   };
+}
+
+function buildDefaultExtraBody(protocol: LLMProtocol, effort: "" | "low" | "high"): Record<string, unknown> | undefined {
+  if (protocol === "chat_completions") {
+    return { reasoning_split: true, thinking: { type: effort === "high" ? "adaptive" : "disabled" } };
+  }
+  if (protocol === "responses" && effort !== "") {
+    return { reasoning: { effort } };
+  }
+  return undefined;
 }
 
 /** 把客户端转成上层 Provider 使用的 ChatFn。 */

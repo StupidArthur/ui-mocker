@@ -1,0 +1,2 @@
+[driver] sending: /run /Users/arthur/code/ui-mocker/debug-round-03/agent/case-b.yaml
+[driver] result after 80s: [2] blocked: No meaningful progress after 8 observation cycles. actions=9 modelCalls=18

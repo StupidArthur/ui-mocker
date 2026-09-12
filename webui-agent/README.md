@@ -133,6 +133,7 @@ MCP 版本固定在 `src/mcp-adapter.ts` 的 `CHROME_DEVTOOLS_MCP_VERSION`，不
 | `MINIMAX_API_KEY` | 覆盖内置临时 MiniMax Key | 内置测试 Key |
 | `LLM_API_KEY` | 通用 LLM Key，优先于 `MINIMAX_API_KEY`/`OPENAI_API_KEY` | 无 |
 | `LLM_PROTOCOL` | `chat_completions` 或 `responses`，切换协议 | `chat_completions` |
+| `LLM_REASONING_EFFORT` | `high` 或 `low`，控制思考等级（chat 映射 `thinking.adaptive/disabled`，responses 映射 `reasoning.effort`） | `low` |
 | `LLM_BASE_URL` | 供应商 API 根路径（含 `/v1`） | 按协议默认 |
 | `LLM_MODEL` | 覆盖模型名 | `MiniMax-M3`（chat）/ `gpt-5`（responses） |
 | `WEBUI_HEADLESS=1` | 使用 headless Chrome | 可视 Chrome |

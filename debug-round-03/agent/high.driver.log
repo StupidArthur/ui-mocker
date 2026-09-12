@@ -1,0 +1,2 @@
+[driver] sending: /run /Users/arthur/code/ui-mocker/debug-round-03/agent/case-b.yaml
+[driver] result after 69s: [2] passed: URL指向项目工作区，标题为'冒烟测试项目'；血缘树根节点'数据集：sensor_sample'下存在子节点'描述性统计'；算法结果显示状态为'已通过'且页面底部提示'已通过并沉淀为血缘节点'。 actions=10 modelCalls=13

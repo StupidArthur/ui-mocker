@@ -1,0 +1,2 @@
+[driver] sending: /run /Users/arthur/code/ui-mocker/debug-round-03/agent/case-b.yaml
+[driver] result after 28s: [2] passed: Snapshot shows project workspace (sensor_analysis_project at /projects/...), lineage tree with root node 数据集：sensor_sample and child node 描述性统计, and 算法结果与审核 section listing 描述性统计 with status 已通过. actions=10 modelCalls=12

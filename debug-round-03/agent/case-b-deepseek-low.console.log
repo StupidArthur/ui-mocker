@@ -1,0 +1,6 @@
+WebUI step agent connected. session=case-b-deepseek-low
+Artifact: /Users/arthur/code/ui-mocker/debug-round-03/agent/case-b-deepseek-low.jsonl
+Type /help for commands.
+> running case: Data-Algorithm Studio 冒烟业务链路（无上传，数据集已预置）
+[2] blocked: No meaningful progress after 8 observation cycles. actions=9 modelCalls=18
+> 
