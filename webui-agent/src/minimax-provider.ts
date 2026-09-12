@@ -4,6 +4,9 @@ import type {
   CaseCompilerProvider,
   CaseDecision,
   CaseModelContext,
+  CaseVerification,
+  CaseVerificationContext,
+  CaseVerifierProvider,
   JudgeContext,
   JudgeDecision,
   JudgeProvider,
@@ -66,6 +69,21 @@ export class MiniMaxCaseAgentProvider implements CaseAgentProvider {
   }
 }
 
+export class MiniMaxCaseVerifierProvider implements CaseVerifierProvider {
+  constructor(private readonly chat: ChatFn) {}
+
+  async verify(context: CaseVerificationContext): Promise<CaseVerification> {
+    const response = await this.chat([
+      { role: "system", content: CASE_VERIFY_PROMPT },
+      { role: "user", content: JSON.stringify({ completion: context.testCase.completion, currentPage: compactBrowserEvidence(context.current.raw), currentError: context.current.error }) },
+    ]);
+    const result = parseJson<CaseVerification>(response);
+    if (typeof result.passed !== "boolean") throw new Error("MiniMax verifier returned an invalid passed field.");
+    if (typeof result.reason !== "string" || !result.reason) throw new Error("MiniMax verifier returned no reason.");
+    return { ...result, raw: { model: MODEL, response } };
+  }
+}
+
 export class MiniMaxCaseCompilerProvider implements CaseCompilerProvider {
   constructor(private readonly chat: ChatFn) {}
 
@@ -106,6 +124,11 @@ export function createMiniMaxCaseCompiler(apiKey = process.env.MINIMAX_API_KEY ?
   return new MiniMaxCaseCompilerProvider(chat);
 }
 
+export function createMiniMaxCaseVerifier(apiKey = process.env.MINIMAX_API_KEY ?? DEFAULT_API_KEY): CaseVerifierProvider {
+  const chat = toChatFn(createLLMClient(resolveLLMConfig(apiKey)));
+  return new MiniMaxCaseVerifierProvider(chat);
+}
+
 const THINK_SYSTEM_PROMPT = `You operate one Web UI test step using discovered MCP tools.
 Return JSON only, with one of these shapes:
 {"kind":"operation","reason":"...","operation":{"toolName":"exact discovered name","arguments":{}}}
@@ -124,7 +147,13 @@ Return JSON only using one shape:
 {"kind":"passed","reason":"explicit success evidence"}
 {"kind":"failed","reason":"explicit failure evidence"}
 {"kind":"blocked","reason":"..."}
-First obey completion.mode and the structured pendingOperations list. The currentPage field always contains the latest fresh DOM snapshot. When choosing an operation, completes must contain the exact IDs from pendingOperations that this single MCP call will complete; one batch tool may complete multiple IDs. Never repeat IDs in completedOperationIds. For operation_succeeded, every operation must complete at least one pending ID: execute pending operations until none remain; do not wait for or invent an additional UI state, and NEVER return observe. For state_reached, a prerequisite/intermediate action (opening a dialog, selecting a file, filling a form, closing a dialog, navigating) may use completes=[]; only include an operation ID when this single MCP call actually completes that requested operation. For state_reached, finish required operations, then check completion.success/failure and observe only while the requested state is pending; when an executable action is still needed to make progress, perform it instead of observing. Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure. Do not observe merely to confirm a synchronous action again. Never invent tools, schema fields, or operation IDs. Use feedbackMode=long only for genuinely long jobs, considering expectedMs.`;
+First obey completion.mode and the structured pendingOperations list. The currentPage field always contains the latest fresh DOM snapshot. When choosing an operation, completes must contain the exact IDs from pendingOperations that this single MCP call will complete; one batch tool may complete multiple IDs. Never repeat IDs in completedOperationIds. For operation_succeeded, every operation must complete at least one pending ID: execute pending operations until none remain; do not wait for or invent an additional UI state, and NEVER return observe. For state_reached, completes is ignored entirely and requiredOperations in the testCase are only task hints: perform whatever actions the page actually needs, and reach the final business state; a prerequisite/intermediate action (opening a dialog, selecting a file, filling a form, closing a dialog, navigating) is a normal action. Snapshot notation uid=25_3 means the MCP argument value is "25_3", never "uid=25_3". For state_reached, check completion.success/failure and observe only while the requested final state is pending; when an executable action is still needed to make progress, perform it instead of observing. Return passed only when the CURRENT page clearly shows the final success state. Return failed only when current evidence explicitly satisfies a listed failure condition. Not yet successful is NOT failure. Do not observe merely to confirm a synchronous action again. Never invent tools, schema fields, or operation IDs. Use feedbackMode=long only for genuinely long jobs, considering expectedMs.`;
+
+const CASE_VERIFY_PROMPT = `You verify the final target state of one Web UI test case using ONLY the current page snapshot.
+Return JSON only: {"passed":true|false,"reason":"concise evidence-based reason"}.
+passed=true only when the CURRENT snapshot clearly proves the success state described by completion.success.
+passed=false when the snapshot does not clearly show that final state, or when it clearly shows any completion.failure condition.
+Never infer from history, previous actions, or claimed completions. If the snapshot is ambiguous or does not clearly show the final state, return passed=false.`;
 
 const CASE_COMPILE_PROMPT = `Compile one natural-language Web UI instruction into a stable test case contract. Return JSON only:
 {"name":"...","description":"...","requiredOperations":[{"id":"stable_snake_case_id","description":"one requested operation"}],"completion":{"mode":"operation_succeeded|state_reached","success":["..."],"failure":["..."]},"timing":{"expectedMs":5000,"timeoutMs":30000},"limits":{"maxActions":12,"maxNoProgress":4}}

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ArtifactRecord, BrowserAdapter, CaseAgentProvider, SetupArtifact, StepArtifact, StepInput, TestCaseArtifact, TestCaseDefinition, JudgeProvider, ThinkProvider, ToolDescriptor, serializeError } from "./types.js";
+import { ArtifactRecord, BrowserAdapter, CaseAgentProvider, CaseVerifierProvider, SetupArtifact, StepArtifact, StepInput, TestCaseArtifact, TestCaseDefinition, JudgeProvider, ThinkProvider, ToolDescriptor, serializeError } from "./types.js";
 import { SingleStepRunner } from "./runner.js";
 import { TestCaseRunner } from "./case-runner.js";
 
@@ -10,6 +10,7 @@ export interface SessionOptions {
   thinker: ThinkProvider;
   judge: JudgeProvider;
   caseAgent?: CaseAgentProvider;
+  caseVerifier?: CaseVerifierProvider;
   sink?: ArtifactSink;
   sessionId?: string;
 }
@@ -29,7 +30,7 @@ export class Session {
   constructor(private readonly options: SessionOptions) {
     this.sessionId = options.sessionId ?? randomUUID();
     this.runner = new SingleStepRunner(options.adapter, options.thinker, options.judge);
-    this.caseRunner = options.caseAgent ? new TestCaseRunner(options.adapter, options.caseAgent) : undefined;
+    this.caseRunner = options.caseAgent ? new TestCaseRunner(options.adapter, options.caseAgent, undefined, options.caseVerifier) : undefined;
   }
 
   get status(): SessionState { return this.state; }

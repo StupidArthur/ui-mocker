@@ -67,11 +67,12 @@ export class ChromeDevtoolsMcpAdapter implements BrowserAdapter {
   async callTool(toolName: string, args: Record<string, unknown>): Promise<ToolInvocation> {
     if (!this.client) throw new Error("MCP adapter is not connected");
     const startedAt = now();
+    const arguments_ = normalizeMcpArguments(args);
     try {
-      const result = await this.client.callTool({ name: toolName, arguments: args });
+      const result = await this.client.callTool({ name: toolName, arguments: arguments_ });
       const error = mcpToolResultError(result);
-      return { toolName, arguments: args, startedAt, finishedAt: now(), result, error };
-    } catch (error) { return { toolName, arguments: args, startedAt, finishedAt: now(), error: serializeError(error) }; }
+      return { toolName, arguments: arguments_, startedAt, finishedAt: now(), result, error };
+    } catch (error) { return { toolName, arguments: arguments_, startedAt, finishedAt: now(), error: serializeError(error) }; }
   }
 
   async captureShot(phase: "takeShotBefore" | "takeShotImmediate" | "takeShotSettled"): Promise<PhaseRecord> {
@@ -156,4 +157,27 @@ export function canonicalSerialize(value: unknown, seen = new WeakSet<object>())
   const object = value as Record<string, unknown>;
   const result = `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonicalSerialize(object[key], seen)}`).join(",")}}`;
   seen.delete(value); return result;
+}
+
+/** 轻量参数规范化：snapshot 记法 uid=25_3 被模型误传成 "uid=25_3" 时，统一归一为 "25_3"。
+ *  递归处理 fill_form 的 elements 数组等嵌套结构，键名为 uid 的字符串值去掉前缀。 */
+export function normalizeMcpArguments(value: Record<string, unknown>): Record<string, unknown> {
+  return normalizeMcpValue(value) as Record<string, unknown>;
+}
+
+function normalizeMcpValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeMcpValue);
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      result[key] = key === "uid" ? normalizeUid(item) : normalizeMcpValue(item);
+    }
+    return result;
+  }
+  return value;
+}
+
+function normalizeUid(value: unknown): unknown {
+  if (typeof value === "string" && value.startsWith("uid=")) return value.slice("uid=".length);
+  return value;
 }

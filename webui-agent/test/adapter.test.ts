@@ -81,4 +81,17 @@ describe("ChromeDevtoolsMcpAdapter", () => {
     expect(canonicalSerialize({ b: { z: 1, a: 2 }, a: 3 })).toBe('{"a":3,"b":{"a":2,"z":1}}');
     await adapter.disconnect();
   });
+
+  it("normalizes snapshot-style uid values like uid=5 to 5 before calling MCP", async () => {
+    const fake = new FakeClient();
+    const adapter = new ChromeDevtoolsMcpAdapter({}, () => fake);
+    await adapter.connect();
+    await adapter.listTools();
+    await adapter.callTool("click", { uid: "uid=5" });
+    await adapter.callTool("fill_form", { elements: [{ uid: "uid=9", value: "x" }] });
+    const calls = fake.requests as Array<{ name: string; arguments: Record<string, unknown> }>;
+    expect(calls[0].arguments.uid).toBe("5");
+    expect((calls[1].arguments.elements as Array<{ uid: string }>)[0].uid).toBe("9");
+    await adapter.disconnect();
+  });
 });

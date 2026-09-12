@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TestCaseRunner } from "../src/case-runner.js";
-import type { BrowserAdapter, CaseAgentProvider, CaseDecision, PhaseRecord, TestCaseDefinition, ToolDescriptor, ToolInvocation, WaitResult } from "../src/types.js";
+import type { BrowserAdapter, CaseAgentProvider, CaseDecision, CaseModelContext, CaseVerifierProvider, PhaseRecord, TestCaseDefinition, ToolDescriptor, ToolInvocation, WaitResult } from "../src/types.js";
 
 class CaseAdapter implements BrowserAdapter {
   page = 0; calls: string[] = [];
@@ -108,7 +108,7 @@ describe("TestCaseRunner", () => {
     expect(calls).toBe(1);
   });
 
-  it("allows prerequisite actions with empty completes for state_reached", async () => {
+  it("ignores model-declared completes for state_reached and never registers them", async () => {
     const adapter = new CaseAdapter();
     const decisions: CaseDecision[] = [
       { kind: "operation", reason: "open submit dialog", operation: { toolName: "click", arguments: { uid: "open" } } },
@@ -123,8 +123,21 @@ describe("TestCaseRunner", () => {
     }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
     expect(result.status).toBe("passed");
     expect(result.actionCount).toBe(2);
-    expect(result.completedOperationIds).toEqual(["submit"]);
+    expect(result.completedOperationIds).toEqual([]);
     expect(adapter.calls.filter((call) => call === "operate:click")).toHaveLength(2);
+  });
+
+  it("does not feed authoritative completed/pending IDs to the model for state_reached", async () => {
+    const adapter = new CaseAdapter();
+    let seen: CaseModelContext | undefined;
+    const agent: CaseAgentProvider = { async decide(context) { seen = context; return { kind: "passed", reason: "done" }; } };
+    await new TestCaseRunner(adapter, agent).run({
+      ...testCase,
+      completion: { mode: "state_reached", success: ["done"], failure: [] },
+      requiredOperations: [{ id: "submit", description: "submit" }],
+    }, { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] });
+    expect(seen?.completedOperationIds).toEqual([]);
+    expect(seen?.pendingOperations).toEqual([]);
   });
 
   it("still rejects empty completes for operation_succeeded", async () => {
@@ -175,5 +188,51 @@ describe("TestCaseRunner", () => {
     expect(result.status).toBe("passed");
     expect(adapter.calls).toEqual(["upload_file", "upload_file"]);
     expect(histories[1].some((entry) => entry.includes("filePaths is required"))).toBe(true);
+  });
+
+  it("verifies a state_reached passed against the current snapshot and rejects a false pass", async () => {
+    const adapter = new CaseAdapter();
+    const decisions: CaseDecision[] = [
+      { kind: "passed", reason: "project created" },
+      { kind: "operation", reason: "create project", operation: { toolName: "click", arguments: { uid: "1" } } },
+      { kind: "passed", reason: "project created now" },
+    ];
+    const agent: CaseAgentProvider = { async decide() { return decisions.shift()!; } };
+    let verifyCalls = 0;
+    const verifier: CaseVerifierProvider = {
+      async verify() {
+        verifyCalls += 1;
+        return { passed: verifyCalls >= 2, reason: verifyCalls >= 2 ? "snapshot shows workspace with child node" : "snapshot shows no project" };
+      },
+    };
+    const result = await new TestCaseRunner(adapter, agent, undefined, verifier).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["workspace with child node"], failure: [] } },
+      { sessionId: "s", sequence: 1, capabilities: [{ name: "click" }] },
+    );
+    expect(result.status).toBe("passed");
+    expect(verifyCalls).toBe(2);
+    expect(result.actionCount).toBe(1);
+    expect(result.modelCallCount).toBe(5);
+  });
+
+  it("blocks when terminal verification keeps rejecting passed", async () => {
+    const adapter = new CaseAdapter();
+    const agent: CaseAgentProvider = { async decide() { return { kind: "passed", reason: "done" }; } };
+    const verifier: CaseVerifierProvider = { async verify() { return { passed: false, reason: "no evidence" }; } };
+    const result = await new TestCaseRunner(adapter, agent, undefined, verifier).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["done"], failure: [] }, limits: { maxNoProgress: 2 } },
+      { sessionId: "s", sequence: 1, capabilities: [] },
+    );
+    expect(result.status).toBe("blocked");
+  });
+
+  it("trusts passed without a verifier when none is provided", async () => {
+    const adapter = new CaseAdapter();
+    const agent: CaseAgentProvider = { async decide() { return { kind: "passed", reason: "done" }; } };
+    const result = await new TestCaseRunner(adapter, agent).run(
+      { ...testCase, completion: { mode: "state_reached", success: ["done"], failure: [] } },
+      { sessionId: "s", sequence: 1, capabilities: [] },
+    );
+    expect(result.status).toBe("passed");
   });
 });

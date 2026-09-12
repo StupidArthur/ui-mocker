@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ObservationScheduler } from "./observation-scheduler.js";
 import { canonicalSerialize } from "./mcp-adapter.js";
-import type { BrowserAdapter, CaseAgentProvider, CaseIteration, CaseModelContext, TestCaseArtifact, TestCaseDefinition, ToolDescriptor } from "./types.js";
+import type { BrowserAdapter, CaseAgentProvider, CaseIteration, CaseModelContext, CaseVerifierProvider, TestCaseArtifact, TestCaseDefinition, ToolDescriptor } from "./types.js";
 
 const now = () => new Date().toISOString();
 
@@ -10,7 +10,12 @@ export interface CaseObservationScheduler {
 }
 
 export class TestCaseRunner {
-  constructor(private readonly adapter: BrowserAdapter, private readonly agent: CaseAgentProvider, private readonly scheduler: CaseObservationScheduler = new ObservationScheduler(adapter)) {}
+  constructor(
+    private readonly adapter: BrowserAdapter,
+    private readonly agent: CaseAgentProvider,
+    private readonly scheduler: CaseObservationScheduler = new ObservationScheduler(adapter),
+    private readonly verifier?: CaseVerifierProvider,
+  ) {}
 
   async run(testCase: TestCaseDefinition, metadata: { sessionId: string; sequence: number; capabilities: ToolDescriptor[]; caseId?: string }): Promise<TestCaseArtifact> {
     validateCase(testCase);
@@ -39,7 +44,27 @@ export class TestCaseRunner {
       const iteration: CaseIteration = { index: iterations.length + 1, startedAt: now(), before: current, decision, observations: [], finishedAt: now() };
       iterations.push(iteration);
 
-      if (decision.kind === "passed" || decision.kind === "failed" || decision.kind === "blocked") { iteration.finishedAt = now(); return finish(decision.kind, decision.reason); }
+      if (decision.kind === "passed" || decision.kind === "failed" || decision.kind === "blocked") {
+        // state_reached 的 passed 不能由 Agent 自证：只依据当前最新 snapshot 做一次独立终态验证。
+        if (decision.kind === "passed" && testCase.completion.mode === "state_reached" && this.verifier) {
+          modelCallCount += 1;
+          let verification;
+          try {
+            verification = await this.verifier.verify({ testCase, current });
+          } catch (error) {
+            verification = { passed: false, reason: `Verifier call failed: ${message(error)}` };
+          }
+          iteration.finishedAt = now();
+          if (verification.passed) return finish("passed", verification.reason || decision.reason);
+          history.push(`final-state verification rejected passed: ${verification.reason}`);
+          if (history.length > 10) history.shift();
+          noProgress += 1;
+          if (noProgress > maxNoProgress) return finish("blocked", `Terminal verification repeatedly rejected passed (${maxNoProgress} times).`);
+          continue;
+        }
+        iteration.finishedAt = now();
+        return finish(decision.kind, decision.reason);
+      }
       if (decision.kind === "observe" && testCase.completion.mode === "operation_succeeded") {
         history.push("contract correction: the current DOM snapshot is already fresh; observation is forbidden for operation_succeeded. Choose the next remaining operation, or passed if every requested operation has executed.");
         if (history.length > 10) history.shift();
@@ -53,12 +78,11 @@ export class TestCaseRunner {
         if (actionCount >= maxActions) return finish("blocked", `Maximum action count reached (${maxActions}).`);
         if (!actionCapabilities.some((tool) => tool.name === decision.operation?.toolName)) return finish("blocked", `Unavailable or observation-only MCP tool: ${decision.operation.toolName}`);
         const completes = decision.completes ?? [];
-        const invalidCompletedIds = completes.some((id) => !requiredIds.has(id) || completedIds.has(id));
-        // state_reached 允许 prerequisite/intermediate 动作（打开弹窗、选文件、关闭弹窗等）不消费任何 operation ID；
-        // operation_succeeded 仍要求每个 MCP 操作至少消费一个 pending operation。
-        const emptyCompletesAllowed = testCase.completion.mode === "state_reached";
-        if (requiredIds.size > 0 && (invalidCompletedIds || (!emptyCompletesAllowed && completes.length === 0))) {
-          history.push(`contract correction: operation.completes must contain only pending IDs${emptyCompletesAllowed ? " (or be empty for a prerequisite action)" : ""}. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
+        // 只有 operation_succeeded 才把模型自报的 completes 视为权威：要求至少消费一个 pending ID。
+        // state_reached 下 requiredOperations 只是任务提示，completes 完全忽略（不登记、不校验）。
+        const trackingCompletes = testCase.completion.mode === "operation_succeeded";
+        if (trackingCompletes && requiredIds.size > 0 && (completes.length === 0 || completes.some((id) => !requiredIds.has(id) || completedIds.has(id)))) {
+          history.push(`contract correction: operation.completes must contain only pending IDs. Pending: ${requiredOperations.filter((item) => !completedIds.has(item.id)).map((item) => item.id).join(", ")}`);
           if (history.length > 10) history.shift();
           noProgress += 1;
           iteration.finishedAt = now();
@@ -86,7 +110,7 @@ export class TestCaseRunner {
           history.push(`tool ${decision.operation.toolName} failed: ${iteration.operation.error.message}`);
         } else {
           lastOperationFingerprint = operationFingerprint;
-          completes.forEach((id) => completedIds.add(id));
+          if (trackingCompletes) completes.forEach((id) => completedIds.add(id));
           history.push(`action ${decision.operation.toolName}: ${decision.reason}`);
         }
         if (history.length > 10) history.shift();
@@ -113,7 +137,20 @@ export class TestCaseRunner {
 }
 
 function context(testCase: TestCaseDefinition, current: CaseModelContext["current"], capabilities: ToolDescriptor[], history: string[], actionCount: number, started: number, deadline: number, completedIds: Set<string>): CaseModelContext {
-  return { testCase, current, capabilities, history: [...history], actionCount, elapsedMs: Date.now() - started, remainingMs: Math.max(0, deadline - Date.now()), completedOperationIds: [...completedIds], pendingOperations: (testCase.requiredOperations ?? []).filter((item) => !completedIds.has(item.id)) };
+  // state_reached 不把 completedOperationIds / pendingOperations 当作权威状态喂给模型，
+  // 避免模型用“checklist 全满”来自证通过；requiredOperations 仍作为 testCase 中的任务提示可见。
+  const trackingCompletes = testCase.completion.mode === "operation_succeeded";
+  return {
+    testCase,
+    current,
+    capabilities,
+    history: [...history],
+    actionCount,
+    elapsedMs: Date.now() - started,
+    remainingMs: Math.max(0, deadline - Date.now()),
+    completedOperationIds: trackingCompletes ? [...completedIds] : [],
+    pendingOperations: trackingCompletes ? (testCase.requiredOperations ?? []).filter((item) => !completedIds.has(item.id)) : [],
+  };
 }
 
 function inferMode(testCase: TestCaseDefinition): "short" | "long" { return testCase.timing.expectedMs > 60_000 ? "long" : "short"; }

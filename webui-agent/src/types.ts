@@ -238,6 +238,23 @@ export interface CaseAgentProvider {
   decide(context: CaseModelContext): Promise<CaseDecision>;
 }
 
+export interface CaseVerificationContext {
+  testCase: TestCaseDefinition;
+  /** 当前最新、未经过滤的页面 snapshot。 */
+  current: PhaseRecord;
+}
+
+export interface CaseVerification {
+  passed: boolean;
+  reason: string;
+  raw?: unknown;
+}
+
+/** 终态验证器：只在 Agent 提议 passed 时调用一次，只看 completion + 当前 snapshot。 */
+export interface CaseVerifierProvider {
+  verify(context: CaseVerificationContext): Promise<CaseVerification>;
+}
+
 export interface CaseIteration {
   index: number;
   startedAt: string;

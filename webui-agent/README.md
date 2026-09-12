@@ -41,6 +41,7 @@ Agent 启动时只建立一次 MCP 连接，并由 `chrome-devtools-mcp` 启动�
 - 短期观察间隔从 0.5 秒逐步增加到 3 秒；长期观察从 5 秒逐步增加到 5 分钟。
 - 原始 DOM/截图写入 artifact；模型只接收当前证据和最多 10 条近期动作/变化摘要，避免上下文无限增长。
 - 终态判断和下一动作合并成一次模型调用，减少成本，并避免已成功时继续误操作。
+- `state_reached` 的 `passed` 不再信任 Agent 自报：由独立 Verifier 只看 `completion.success/failure` 与当前最新 snapshot 复核一次，未证实则拒绝并继续。
 
 步骤结果含义：
 

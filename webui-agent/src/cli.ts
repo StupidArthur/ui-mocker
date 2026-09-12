@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import { ChromeDevtoolsMcpAdapter } from "./mcp-adapter.js";
 import { JsonlArtifactSink } from "./artifact-store.js";
-import { createMiniMaxCaseAgent, createMiniMaxCaseCompiler, createMiniMaxProviders } from "./minimax-provider.js";
+import { createMiniMaxCaseAgent, createMiniMaxCaseCompiler, createMiniMaxCaseVerifier, createMiniMaxProviders } from "./minimax-provider.js";
 import { Session } from "./session.js";
 import type { TestCaseDefinition } from "./types.js";
 
@@ -13,9 +13,10 @@ export async function runRepl(): Promise<void> {
   const { thinker, judge } = createMiniMaxProviders();
   const caseAgent = createMiniMaxCaseAgent();
   const caseCompiler = createMiniMaxCaseCompiler();
+  const caseVerifier = createMiniMaxCaseVerifier();
   const sessionId = process.env.WEBUI_SESSION_ID ?? randomUUID();
   const artifactPath = process.env.WEBUI_ARTIFACT_PATH ?? `artifacts/session-${sessionId}.jsonl`;
-  const session = new Session({ adapter: new ChromeDevtoolsMcpAdapter(), thinker, judge, caseAgent, sink: new JsonlArtifactSink(artifactPath), sessionId });
+  const session = new Session({ adapter: new ChromeDevtoolsMcpAdapter(), thinker, judge, caseAgent, caseVerifier, sink: new JsonlArtifactSink(artifactPath), sessionId });
   const rl = createInterface({ input: stdin, output: stdout, terminal: Boolean(process.stdout.isTTY) });
   let closing = false;
   const close = async () => {
