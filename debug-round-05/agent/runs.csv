@@ -1,0 +1,11 @@
+case,run,phase,status,elapsedMs,actionCount,modelCallCount,promptTokens,completionTokens,totalTokens,firstSuccessIteration,terminalLag,sameSnapshotObserveCount,verificationCount,rescue,malformedModelResponseCount,mcpErrorCount,duplicateOperationCount,decisionEfficiency,reason
+01,1,1,passed,10503,2,4,17447,185,17632,3,0,0,1,agent,0,0,0,0.5,URL is http://localhost:5173/datasets and the main heading displays 「数据集」, matching the success state; no error message present. actions=2 modelCalls=4 tokens=1
+02,1,1,passed,11358,6,8,40993,424,41417,7,0,0,1,agent,0,0,0,0.75,用户表格中出现了用户名为 case_user 的行（uid=9_31），且无错误提示，仅有成功提示“账号已创建”。 actions=6 modelCalls=8 tokens=41417
+03,1,1,failed,14798,7,9,45691,558,46249,,,0,1,,0,3,0,0.778,上传文件操作被拒绝：路径 /Users/arthur/code/ui-mocker/demo_01/backend/sample_data/sensor_sample.csv 不在允许的工作区根目录内，无法选择本地文件，上传流程无法继续。 actions=7 modelCalls=9 tokens=46249
+04,1,1,passed,12068,6,8,44074,393,44467,7,0,0,1,agent,0,0,0,0.75,Snapshot shows the project workspace page with heading "导航项目" and a "项目已创建" confirmation, matching the success state. actions=6 modelCalls=8 tokens=44467
+05,1,1,passed,17409,8,10,54349,528,54877,9,0,0,1,agent,0,0,0,0.8,Snapshot shows the project workspace URL and a dialog titled '描述性统计 · 结果详情' displaying descriptive statistics (count, missing rate, mean, std, min, max) for tem
+06,1,1,passed,15591,7,9,51702,470,52172,8,0,0,1,agent,0,0,0,0.778,Snapshot shows project workspace URL /projects/c36605098adb4c159d2c08713e9c952b with status text '已公开' and a '取消公开' button, confirming the project is public wit
+07,1,1,passed,10961,5,7,36396,307,36703,6,0,0,1,agent,0,0,0,0.714,数据集列表显示“暂无数据集”，且页面无 sensor_sample 数据集，也无删除失败或引用错误提示。 actions=5 modelCalls=7 tokens=36703
+08,1,1,passed,16800,10,12,72066,632,72698,11,0,0,1,agent,0,0,0,0.833,Snapshot shows project workspace with lineage tree containing a '描述性统计' child node under the dataset root, and the algorithm result section displays '描述性统计' wit
+09,1,1,failed,6722,2,4,17018,187,17205,,,0,1,,0,0,0,0.5,当前页面仍在登录页，并显示“用户名或密码错误”，明确满足失败条件：页面提示用户名或密码错误。 actions=2 modelCalls=4 tokens=17205
+03,1,1fix,passed,10021,5,7,34687,365,35052,6,0,0,1,agent,0,0,0,0.714,Snapshot shows dataset list containing 'sensor_sample' with details (4 位号, 25 行 × 4 列, CSV · 840 B) and a '上传成功' message, confirming the dataset appears in the 

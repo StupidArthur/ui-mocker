@@ -1,0 +1,16 @@
+name: 登录并进入数据集页面
+description: "使用默认管理员账号 admin/admin123 登录 Data-Algorithm Studio，登录成功后应进入数据集页面。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 当前页面为数据集页面（URL 包含 /datasets）
+    - 页面标题区域显示「数据集」
+  failure:
+    - 页面提示用户名或密码错误
+timing:
+  expected: 30秒
+  timeout: 5分钟
+limits:
+  maxActions: 15
+  maxNoProgress: 6

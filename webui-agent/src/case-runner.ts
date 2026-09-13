@@ -40,6 +40,7 @@ export class TestCaseRunner {
     let consecutiveNoChangeObservations = 0;
     let firstSuccessIteration: number | undefined;
     let rescue: "agent" | "observe" | "final" | undefined;
+    let verificationCount = 0, malformedModelResponseCount = 0, mcpErrorCount = 0, duplicateOperationCount = 0;
 
     // 独立终态验证：同一 snapshot 只调用一次 verifier（指纹缓存），只看 completion + 当前快照。
     const verifyCurrent = async (): Promise<CaseVerification | undefined> => {
@@ -56,13 +57,14 @@ export class TestCaseRunner {
       }
       lastVerifiedFingerprint = fingerprint;
       lastVerification = verification;
+      verificationCount += 1;
       if (verification.passed && firstSuccessIteration === undefined) firstSuccessIteration = iterations.length;
       return verification;
     };
 
     const build = (status: TestCaseArtifact["status"], reason: string): TestCaseArtifact => {
       const metrics = stateReached
-        ? { firstSuccessIteration, sameSnapshotObserveCount: maxSameSnapshotObserveCount, rescue }
+        ? { firstSuccessIteration, sameSnapshotObserveCount: maxSameSnapshotObserveCount, rescue, verificationCount, malformedModelResponseCount, mcpErrorCount, duplicateOperationCount }
         : undefined;
       return {
         version: "0.3", recordType: "case", sessionId: metadata.sessionId, caseId: metadata.caseId ?? randomUUID(), sequence: metadata.sequence,
@@ -90,7 +92,7 @@ export class TestCaseRunner {
       const base = context(testCase, current, actionCapabilities, history, actionCount, startedMs, deadline, completedIds, lastTransition, consecutiveNoChangeObservations);
       let decision;
       try { modelCallCount += 1; decision = await this.agent.decide(base); }
-      catch (error) { return finish("blocked", `Case decision failed: ${message(error)}`); }
+      catch (error) { malformedModelResponseCount += 1; return finish("blocked", `Case decision failed: ${message(error)}`); }
       const iteration: CaseIteration = { index: iterations.length + 1, startedAt: now(), before: current, decision, observations: [], finishedAt: now() };
       iterations.push(iteration);
 
@@ -180,6 +182,7 @@ export class TestCaseRunner {
         }
         const operationFingerprint = canonicalSerialize(decision.operation);
         if (operationFingerprint === lastOperationFingerprint) {
+          duplicateOperationCount += 1;
           history.push(`suppressed duplicate action ${decision.operation.toolName}; observing for delayed feedback`);
           const observed = await this.scheduler.waitForChange(current.raw, decision.feedbackMode ?? inferMode(testCase), deadline);
           iteration.observations.push(...observed.observations);
@@ -200,6 +203,7 @@ export class TestCaseRunner {
         if (iteration.operation.error) {
           // 让下一轮模型看到真实 MCP 错误（如参数 schema 校验失败），并允许它用相同参数重试。
           lastOperationFingerprint = undefined;
+          mcpErrorCount += 1;
           history.push(`tool ${decision.operation.toolName} failed: ${iteration.operation.error.message}`);
           lastTransition = { kind: "operation", toolName: decision.operation.toolName, succeeded: false, pageChanged: false };
         } else {

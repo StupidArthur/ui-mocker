@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c03-r1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p1/case-03-run-01.jsonl
+Type /help for commands.
+> running case: 上传数据集
+[2] failed: 上传文件操作被拒绝：路径 /Users/arthur/code/ui-mocker/demo_01/backend/sample_data/sensor_sample.csv 不在允许的工作区根目录内，无法选择本地文件，上传流程无法继续。 actions=7 modelCalls=9 tokens=46249
+> 

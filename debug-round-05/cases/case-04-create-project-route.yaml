@@ -1,0 +1,16 @@
+name: 创建项目并进入工作区
+description: "使用默认管理员账号 admin/admin123 登录，进入我的项目页面，新建一个名为 导航项目 的项目并绑定 sensor_sample 数据集，创建后应自动进入该项目的工作区，确认工作区对应刚创建的 导航项目。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 当前位于创建项目的工作区
+    - 工作区标题显示 导航项目
+  failure:
+    - 创建项目失败或出现错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 20
+  maxNoProgress: 6

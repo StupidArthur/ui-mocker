@@ -19,8 +19,8 @@ class FakeClient implements McpClientLike {
 
 describe("ChromeDevtoolsMcpAdapter", () => {
   it("keeps visible isolated Chrome by default and adds headless only when requested", () => {
-    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated"]);
-    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--headless"]);
+    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--allowUnrestrictedPaths"]);
+    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--allowUnrestrictedPaths", "--headless"]);
   });
 
   it("uses a project-local npm cache unless explicitly overridden", () => {

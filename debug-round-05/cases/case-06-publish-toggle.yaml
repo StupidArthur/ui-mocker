@@ -1,0 +1,16 @@
+name: 公开项目
+description: "使用默认管理员账号 admin/admin123 登录，进入我的项目页面，新建一个名为 公开验证项目 的项目并绑定 sensor_sample 数据集，进入工作区后将该项目公开，确认项目状态显示为已公开。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 当前位于项目工作区
+    - 项目状态显示为已公开
+  failure:
+    - 公开操作失败或出现错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 25
+  maxNoProgress: 6

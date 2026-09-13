@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c01-r1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p1/case-01-run-01.jsonl
+Type /help for commands.
+> running case: 登录并进入数据集页面
+[2] passed: URL is http://localhost:5173/datasets and the main heading displays 「数据集」, matching the success state; no error message present. actions=2 modelCalls=4 tokens=17632
+> 

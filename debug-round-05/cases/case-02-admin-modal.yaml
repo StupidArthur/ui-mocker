@@ -1,0 +1,15 @@
+name: 创建账号弹窗
+description: "使用默认管理员账号 admin/admin123 登录，进入管理后台，点击创建账号打开弹窗，创建用户名为 case_user、初始密码为 Passw0rd、角色为普通用户的账号，提交后弹窗应关闭且用户表中出现 case_user。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 用户表格中出现用户名为 case_user 的行
+  failure:
+    - 出现用户名已存在或创建失败的错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 20
+  maxNoProgress: 6

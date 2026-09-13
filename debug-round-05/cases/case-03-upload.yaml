@@ -1,0 +1,15 @@
+name: 上传数据集
+description: "使用默认管理员账号 admin/admin123 登录，进入数据集页面，点击上传数据集，选择本地文件 /Users/arthur/code/ui-mocker/demo_01/backend/sample_data/sensor_sample.csv，数据集名称使用 sensor_sample，提交后确认数据集中出现名为 sensor_sample 的数据集。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 数据集列表中出现名为 sensor_sample 的数据集
+  failure:
+    - 上传失败或出现错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 20
+  maxNoProgress: 6

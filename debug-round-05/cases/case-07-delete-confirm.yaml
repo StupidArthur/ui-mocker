@@ -1,0 +1,15 @@
+name: 删除数据集并确认
+description: "使用默认管理员账号 admin/admin123 登录，进入数据集页面，打开 sensor_sample 数据集的预览，点击删除数据集，在确认框中确认删除，删除后数据集中不再存在 sensor_sample。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 数据集列表中没有名为 sensor_sample 的数据集
+  failure:
+    - 出现删除失败或数据集被引用的错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 20
+  maxNoProgress: 6

@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c03-r1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p1fix/case-03-run-01.jsonl
+Type /help for commands.
+> running case: 上传数据集
+[2] passed: Snapshot shows dataset list containing 'sensor_sample' with details (4 位号, 25 行 × 4 列, CSV · 840 B) and a '上传成功' message, confirming the dataset appears in the list with no error. actions=5 modelCalls=7 tokens=35052
+> 

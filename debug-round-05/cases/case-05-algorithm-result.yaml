@@ -1,0 +1,16 @@
+name: 执行算法并查看结果
+description: "使用默认管理员账号 admin/admin123 登录，进入我的项目页面，新建一个名为 算法项目 的项目并绑定 sensor_sample 数据集，在工作区血缘根节点上执行描述性统计算法，执行后应出现该算法的结果详情。"
+start_url: http://localhost:5173/login
+completion:
+  mode: state_reached
+  success:
+    - 当前位于项目工作区
+    - 页面显示描述性统计的结果详情
+  failure:
+    - 算法执行失败或出现错误提示
+timing:
+  expected: 1分钟
+  timeout: 5分钟
+limits:
+  maxActions: 25
+  maxNoProgress: 6

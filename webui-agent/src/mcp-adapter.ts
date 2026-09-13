@@ -119,7 +119,9 @@ export class ChromeDevtoolsMcpAdapter implements BrowserAdapter {
 export const CHROME_DEVTOOLS_MCP_VERSION = "1.7.0";
 
 export function defaultMcpArgs(headless = false): string[] {
-  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated"];
+  // --allowUnrestrictedPaths：MCP 客户端未协商 roots 能力时，文件工具默认被限制在 OS 临时目录，
+  // 导致上传本地测试文件被拒（Access denied）。本地受信任测试需要访问仓库内 fixture。
+  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated", "--allowUnrestrictedPaths"];
   if (headless) args.push("--headless");
   return args;
 }

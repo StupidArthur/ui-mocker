@@ -307,6 +307,14 @@ export interface TestCaseArtifact {
     sameSnapshotObserveCount?: number;
     /** passed 由哪条路径捕获。 */
     rescue?: "agent" | "observe" | "final";
+    /** verifier 实际调用次数（缓存命中不计）。 */
+    verificationCount?: number;
+    /** 模型返回无法解析/非法决策的次数。 */
+    malformedModelResponseCount?: number;
+    /** MCP 工具调用报错次数。 */
+    mcpErrorCount?: number;
+    /** 被抑制的重复操作次数。 */
+    duplicateOperationCount?: number;
   };
   iterations: CaseIteration[];
 }
