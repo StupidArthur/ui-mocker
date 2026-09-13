@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c09-r5
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-09-run-05.jsonl
+Type /help for commands.
+> running case: 错误密码登录失败
+[2] failed: 当前页面仍停留在登录页 http://localhost:5173/login，并显示提示“用户名或密码错误”，明确满足失败条件。 actions=2 modelCalls=4 tokens=17194
+> 

@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c05-r2
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-05-run-02.jsonl
+Type /help for commands.
+> running case: 执行算法并查看结果
+[2] passed: Snapshot shows the project workspace URL and a dialog titled '描述性统计 · 结果详情' displaying descriptive statistics results (count, missing rate, mean, std, min, max) for temperature, pressure, and flow, with no error messages. actions=8 modelCalls=10 tokens=54934
+> 

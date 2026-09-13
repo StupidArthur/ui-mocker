@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c08-r1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-08-run-01.jsonl
+Type /help for commands.
+> running case: Data-Algorithm Studio 冒烟业务链路（无上传，数据集已预置）
+[2] passed: Snapshot shows the project workspace (冒烟测试项目), a 血缘树 with root dataset node and a 描述性统计 child node, and the algorithm result section listing 描述性统计 with status 已通过. actions=10 modelCalls=12 tokens=72763
+> 

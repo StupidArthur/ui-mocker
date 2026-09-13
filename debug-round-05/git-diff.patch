@@ -1,0 +1,102 @@
+diff --git a/webui-agent/src/case-runner.ts b/webui-agent/src/case-runner.ts
+index 5849efd..6748b12 100644
+--- a/webui-agent/src/case-runner.ts
++++ b/webui-agent/src/case-runner.ts
+@@ -40,6 +40,7 @@ export class TestCaseRunner {
+     let consecutiveNoChangeObservations = 0;
+     let firstSuccessIteration: number | undefined;
+     let rescue: "agent" | "observe" | "final" | undefined;
++    let verificationCount = 0, malformedModelResponseCount = 0, mcpErrorCount = 0, duplicateOperationCount = 0;
+ 
+     // 独立终态验证：同一 snapshot 只调用一次 verifier（指纹缓存），只看 completion + 当前快照。
+     const verifyCurrent = async (): Promise<CaseVerification | undefined> => {
+@@ -56,13 +57,14 @@ export class TestCaseRunner {
+       }
+       lastVerifiedFingerprint = fingerprint;
+       lastVerification = verification;
++      verificationCount += 1;
+       if (verification.passed && firstSuccessIteration === undefined) firstSuccessIteration = iterations.length;
+       return verification;
+     };
+ 
+     const build = (status: TestCaseArtifact["status"], reason: string): TestCaseArtifact => {
+       const metrics = stateReached
+-        ? { firstSuccessIteration, sameSnapshotObserveCount: maxSameSnapshotObserveCount, rescue }
++        ? { firstSuccessIteration, sameSnapshotObserveCount: maxSameSnapshotObserveCount, rescue, verificationCount, malformedModelResponseCount, mcpErrorCount, duplicateOperationCount }
+         : undefined;
+       return {
+         version: "0.3", recordType: "case", sessionId: metadata.sessionId, caseId: metadata.caseId ?? randomUUID(), sequence: metadata.sequence,
+@@ -90,7 +92,7 @@ export class TestCaseRunner {
+       const base = context(testCase, current, actionCapabilities, history, actionCount, startedMs, deadline, completedIds, lastTransition, consecutiveNoChangeObservations);
+       let decision;
+       try { modelCallCount += 1; decision = await this.agent.decide(base); }
+-      catch (error) { return finish("blocked", `Case decision failed: ${message(error)}`); }
++      catch (error) { malformedModelResponseCount += 1; return finish("blocked", `Case decision failed: ${message(error)}`); }
+       const iteration: CaseIteration = { index: iterations.length + 1, startedAt: now(), before: current, decision, observations: [], finishedAt: now() };
+       iterations.push(iteration);
+ 
+@@ -180,6 +182,7 @@ export class TestCaseRunner {
+         }
+         const operationFingerprint = canonicalSerialize(decision.operation);
+         if (operationFingerprint === lastOperationFingerprint) {
++          duplicateOperationCount += 1;
+           history.push(`suppressed duplicate action ${decision.operation.toolName}; observing for delayed feedback`);
+           const observed = await this.scheduler.waitForChange(current.raw, decision.feedbackMode ?? inferMode(testCase), deadline);
+           iteration.observations.push(...observed.observations);
+@@ -200,6 +203,7 @@ export class TestCaseRunner {
+         if (iteration.operation.error) {
+           // 让下一轮模型看到真实 MCP 错误（如参数 schema 校验失败），并允许它用相同参数重试。
+           lastOperationFingerprint = undefined;
++          mcpErrorCount += 1;
+           history.push(`tool ${decision.operation.toolName} failed: ${iteration.operation.error.message}`);
+           lastTransition = { kind: "operation", toolName: decision.operation.toolName, succeeded: false, pageChanged: false };
+         } else {
+diff --git a/webui-agent/src/mcp-adapter.ts b/webui-agent/src/mcp-adapter.ts
+index 173fa3e..eb23df4 100644
+--- a/webui-agent/src/mcp-adapter.ts
++++ b/webui-agent/src/mcp-adapter.ts
+@@ -119,7 +119,9 @@ export class ChromeDevtoolsMcpAdapter implements BrowserAdapter {
+ export const CHROME_DEVTOOLS_MCP_VERSION = "1.7.0";
+ 
+ export function defaultMcpArgs(headless = false): string[] {
+-  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated"];
++  // --allowUnrestrictedPaths：MCP 客户端未协商 roots 能力时，文件工具默认被限制在 OS 临时目录，
++  // 导致上传本地测试文件被拒（Access denied）。本地受信任测试需要访问仓库内 fixture。
++  const args = ["-y", `chrome-devtools-mcp@${CHROME_DEVTOOLS_MCP_VERSION}`, "--isolated", "--allowUnrestrictedPaths"];
+   if (headless) args.push("--headless");
+   return args;
+ }
+diff --git a/webui-agent/src/types.ts b/webui-agent/src/types.ts
+index 44a5af4..b623b53 100644
+--- a/webui-agent/src/types.ts
++++ b/webui-agent/src/types.ts
+@@ -307,6 +307,14 @@ export interface TestCaseArtifact {
+     sameSnapshotObserveCount?: number;
+     /** passed 由哪条路径捕获。 */
+     rescue?: "agent" | "observe" | "final";
++    /** verifier 实际调用次数（缓存命中不计）。 */
++    verificationCount?: number;
++    /** 模型返回无法解析/非法决策的次数。 */
++    malformedModelResponseCount?: number;
++    /** MCP 工具调用报错次数。 */
++    mcpErrorCount?: number;
++    /** 被抑制的重复操作次数。 */
++    duplicateOperationCount?: number;
+   };
+   iterations: CaseIteration[];
+ }
+diff --git a/webui-agent/test/adapter.test.ts b/webui-agent/test/adapter.test.ts
+index eecd91c..3973dd3 100644
+--- a/webui-agent/test/adapter.test.ts
++++ b/webui-agent/test/adapter.test.ts
+@@ -19,8 +19,8 @@ class FakeClient implements McpClientLike {
+ 
+ describe("ChromeDevtoolsMcpAdapter", () => {
+   it("keeps visible isolated Chrome by default and adds headless only when requested", () => {
+-    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated"]);
+-    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--headless"]);
++    expect(defaultMcpArgs()).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--allowUnrestrictedPaths"]);
++    expect(defaultMcpArgs(true)).toEqual(["-y", "chrome-devtools-mcp@1.7.0", "--isolated", "--allowUnrestrictedPaths", "--headless"]);
+   });
+ 
+   it("uses a project-local npm cache unless explicitly overridden", () => {

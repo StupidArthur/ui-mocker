@@ -1,0 +1,21 @@
+# debug-round-05 commands (DeepSeek flash low)
+
+# 静态验证
+cd webui-agent && npm run typecheck && npm test && npm run build
+
+# 环境
+cd demo_01 && python3 reset_demo.py          # 每个 run 前重置
+cd demo_01/backend && .venv/bin/python -m uvicorn main:app --port 8000 &
+cd demo_01/frontend && npm run dev &
+bash debug-round-05/demo/seed_dataset.sh     # 需要数据集的 Case 前用 API 预置
+
+# Phase 1：每 Case ×1
+LLM_API_KEY=... python3 debug-round-05/agent/run_suite.py --phase 1 --runs 1
+# Case 03 首次因 MCP 路径限制失败；加 --allowUnrestrictedPaths 后重跑
+LLM_API_KEY=... python3 debug-round-05/agent/run_suite.py --phase 1fix --runs 1 --cases 03
+
+# Phase 2：每 Case ×5
+LLM_API_KEY=... python3 debug-round-05/agent/run_suite.py --phase 2 --runs 5
+
+# 指标 CSV：agent/runs-phase1.csv（首轮）、agent/runs.csv（phase 2）
+# artifact：agent/p1/、agent/p1fix/ 中的 run_suite 输出，agent/p2/

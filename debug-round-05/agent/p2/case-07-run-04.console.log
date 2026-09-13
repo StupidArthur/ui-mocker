@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c07-r4
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-07-run-04.jsonl
+Type /help for commands.
+> running case: 删除数据集并确认
+[2] passed: Snapshot shows the datasets page with '暂无数据集' (no datasets) and no 'sensor_sample' entry, and no deletion error or reference error is displayed. actions=5 modelCalls=7 tokens=36715
+> 

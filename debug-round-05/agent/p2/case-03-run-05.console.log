@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c03-r5
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-03-run-05.jsonl
+Type /help for commands.
+> running case: 上传数据集
+[2] passed: 数据集列表中出现名为 sensor_sample 的数据集，且页面显示“上传成功”，无错误提示。 actions=5 modelCalls=7 tokens=35055
+> 

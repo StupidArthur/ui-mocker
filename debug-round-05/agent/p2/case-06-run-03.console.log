@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c06-r3
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-06-run-03.jsonl
+Type /help for commands.
+> running case: 公开项目
+[2] passed: Snapshot shows project workspace URL /projects/7dae2c299ca548269f68cca602ddd037 with status text "已公开" and a "取消公开" button, confirming the project is public. actions=7 modelCalls=9 tokens=52070
+> 

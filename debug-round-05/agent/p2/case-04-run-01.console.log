@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c04-r1
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-04-run-01.jsonl
+Type /help for commands.
+> running case: 创建项目并进入工作区
+[2] passed: Snapshot shows the project workspace page (URL /projects/f03dbdcf...) with heading "导航项目" and a "项目已创建" confirmation, matching the success state. actions=6 modelCalls=8 tokens=44479
+> 

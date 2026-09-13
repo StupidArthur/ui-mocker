@@ -1,0 +1,6 @@
+WebUI step agent connected. session=r05-c02-r5
+Artifact: /Users/arthur/code/ui-mocker/debug-round-05/agent/p2/case-02-run-05.jsonl
+Type /help for commands.
+> running case: 创建账号弹窗
+[2] passed: 用户表格中明确出现用户名为 case_user 的行（uid=9_31），且页面显示“账号已创建”，无错误提示。 actions=6 modelCalls=8 tokens=41273
+> 
